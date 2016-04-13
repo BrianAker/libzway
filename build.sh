@@ -583,7 +583,7 @@ build_libzway()
         mkdir android_arm7 &> /dev/null
         cd android_arm7
 
-        cmake -DANDROID_NDK_ROOT=$ANDROID_NDK_ROOT -DCMAKE_TOOLCHAIN_FILE=android_arm7_toolchain.cmake ../../..
+        cmake -DANDROID_NDK_ROOT=$ANDROID_NDK_ROOT -DANDROID_API_LEVEL=19 -DCMAKE_TOOLCHAIN_FILE=android_arm7_toolchain.cmake ../../..
 
         if [ $? == 0 ]; then
            make && make install
@@ -611,15 +611,15 @@ build()
 
     cd deps
 
-    #build_gmp
+    build_gmp
 
-    #build_nettle
+    build_nettle
 
-    #build_gnutls
+    build_gnutls
 
-    #build_sqlite
+    build_sqlite
 
-    #build_libexif
+    build_libexif
 
     cd ..
 
