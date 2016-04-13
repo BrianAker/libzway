@@ -242,13 +242,6 @@ bool MessageSender::init()
 
 // ============================================================ //
 
-bool MessageSender::reset()
-{
-
-}
-
-// ============================================================ //
-
 bool MessageSender::process()
 {
 	if (m_messageParts == 0) {

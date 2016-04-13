@@ -31,6 +31,8 @@
 
 #include <libexif/exif-data.h>
 
+#include <string>
+
 namespace Zway {
 
 // ============================================================ //

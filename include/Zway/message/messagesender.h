@@ -49,8 +49,6 @@ public:
 
     bool init();
 
-    bool reset();
-
     bool process();
 
     float getSendSpeed();

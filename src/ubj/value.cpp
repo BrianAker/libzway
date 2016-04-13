@@ -37,7 +37,7 @@ bool Value::Reader::read(Value &val, const Zway::BUFFER &buf)
     return read(val, buf->data(), buf->size());
 }
 
-bool Value::Reader::read(Value &val, const uint8_t* data, size_t size)
+bool Value::Reader::read(Value &val, const uint8_t *data, size_t size)
 {
     ubjr_context_t* ctx = ubjr_open_memory(data, data + size);
 
@@ -212,7 +212,7 @@ void Value::Writer::writeArray(const Value &val, ubjw_context_t *ctx)
     }
 }
 
-void Value::Writer::writeValue(const std::string &key, const Value &val, ubjw_context_t* ctx)
+void Value::Writer::writeValue(const std::string &key, const Value &val, ubjw_context_t *ctx)
 {
     if (!key.empty()) {
 

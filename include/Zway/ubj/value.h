@@ -30,6 +30,7 @@
 #include "Zway/ubj/ubj.h"
 #include "Zway/buffer.h"
 
+#include <string>
 #include <map>
 
 namespace Zway { namespace UBJ {
@@ -48,7 +49,7 @@ public:
 
         static bool read(Value &val, const Zway::BUFFER &buf);
 
-        static bool read(Value &val, const uint8_t* data, size_t size);
+        static bool read(Value &val, const uint8_t *data, size_t size);
 
     private:
 
@@ -71,7 +72,7 @@ public:
 
         static void writeArray(const Value &val, ubjw_context_t *ctx);
 
-        static void writeValue(const std::string &key, const Value &val, ubjw_context_t* ctx);
+        static void writeValue(const std::string &key, const Value &val, ubjw_context_t *ctx);
     };
 
 public:
