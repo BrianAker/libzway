@@ -29,9 +29,7 @@
 
 #include "Zway/buffer.h"
 
-namespace Zway {
-
-namespace Crypto {
+namespace Zway { namespace Crypto {
 
 // ============================================================ //
 

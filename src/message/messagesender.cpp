@@ -55,8 +55,6 @@ MessageSender::MessageSender(Client* client, MESSAGE message)
       m_resourcePart(0),
       m_resourceIndex(0),
       m_status(0),
-      m_sendSpeed(0),
-      m_startTime(0),
       m_messageSize(0),
       m_completed(false),
       m_msg(message),
@@ -279,8 +277,6 @@ bool MessageSender::process()
 
     if (m_resourcePart == 0) {
 
-        m_startTime = m_client->tickCount();
-
         // open storage blob
 
         if (m_res->type() != Resource::TextType) {
@@ -352,7 +348,7 @@ bool MessageSender::process()
 
     m_sha2.update(buf->data(), buf->size());
 
-    // prepare packet head bson
+    // prepare packet head
 
     UBJ::Object head;
 
@@ -442,8 +438,6 @@ bool MessageSender::process()
 
 	m_resourcePart++;
 
-	// check whether the resource has completed
-
     if (m_resourcePart == m_resourceParts[m_res->id()]) {
 
     	// resource completed
@@ -454,6 +448,19 @@ bool MessageSender::process()
 
                 m_client->storage()->closeBodyBlob(m_res->id());
             }
+        }
+
+        // message completed
+
+        if (m_messagePart == m_messageParts) {
+
+            Zway::Message::Lock lock(*m_msg);
+
+            m_msg->setTime(time(nullptr));
+
+            m_msg->setStatus(Message::Sent);
+
+            m_client->storage()->updateMessage(m_msg);
         }
 
         // raise event
@@ -485,22 +492,6 @@ bool MessageSender::process()
 
     if (m_messagePart == m_messageParts) {
 
-        uint32_t timeDelta = m_client->tickCount() - m_startTime;
-
-        m_sendSpeed =  m_messageSize / timeDelta;
-
-        //m_client->debug("Overall send speed: %.2f kB/s", m_sendSpeed);
-
-        {
-            Zway::Message::Lock lock(*m_msg);
-
-            m_msg->setTime(time(nullptr));
-
-            m_msg->setStatus(Message::Sent);
-
-            m_client->storage()->updateMessage(m_msg);
-        }
-
         m_completed = true;
 
         // raise event
@@ -509,13 +500,6 @@ bool MessageSender::process()
     }
 
     return true;
-}
-
-// ============================================================ //
-
-float MessageSender::getSendSpeed()
-{
-    return m_sendSpeed;
 }
 
 // ============================================================ //

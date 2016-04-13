@@ -29,9 +29,7 @@
 
 #include <cstdint>
 
-namespace Zway {
-
-namespace Crypto {
+namespace Zway { namespace Crypto {
 
 // ============================================================ //
 

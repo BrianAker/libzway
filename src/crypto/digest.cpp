@@ -32,9 +32,7 @@
 #include <nettle/md5.h>
 #include <nettle/sha2.h>
 
-namespace Zway {
-
-namespace Crypto {
+namespace Zway { namespace Crypto {
 
 // ============================================================ //
 

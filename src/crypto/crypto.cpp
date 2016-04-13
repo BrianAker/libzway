@@ -26,9 +26,7 @@
 
 #include "Zway/crypto/crypto.h"
 
-namespace Zway {
-
-namespace Crypto {
+namespace Zway { namespace Crypto {
 
 // ============================================================ //
 

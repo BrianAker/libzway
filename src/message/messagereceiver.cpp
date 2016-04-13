@@ -337,9 +337,16 @@ bool MessageReceiver::process(PACKET pkt, const UBJ::Value &head)
 
             if (res->type() == Resource::TextType) {
 
-                // update message text
+                // update message
 
                 Zway::Message::Lock lock(*m_msg);
+
+                if (m_partsProcessed+1 == m_messageParts) {
+
+                    m_msg->setTime(time(nullptr));
+
+                    m_msg->setStatus(Message::Recv);
+                }
 
                 m_client->storage()->updateMessage(m_msg);
             }
@@ -349,20 +356,21 @@ bool MessageReceiver::process(PACKET pkt, const UBJ::Value &head)
             m_client->postEvent(MessageEvent::create(Event::ResourceRecv, m_msg, res));
         }
     }
+    else
+    if (m_partsProcessed+1 == m_messageParts) {
+
+        Zway::Message::Lock lock(*m_msg);
+
+        m_msg->setTime(time(nullptr));
+
+        m_msg->setStatus(Message::Recv);
+
+        m_client->storage()->updateMessage(m_msg);
+    }
 
 	m_partsProcessed++;
 
     if (m_partsProcessed == m_messageParts) {
-
-        {
-            Zway::Message::Lock lock(*m_msg);
-
-            m_msg->setTime(time(nullptr));
-
-            m_msg->setStatus(Message::Recv);
-
-            m_client->storage()->updateMessage(m_msg);
-        }
 
         m_completed = true;
 

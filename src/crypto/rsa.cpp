@@ -31,9 +31,7 @@
 #include <nettle/yarrow.h>
 #include <nettle/rsa.h>
 
-namespace Zway {
-
-namespace Crypto {
+namespace Zway { namespace Crypto {
 
 // ============================================================ //
 // RSA
@@ -111,7 +109,7 @@ UBJ::Value privateKeyToUbj(struct rsa_private_key& privateKey)
 
 // ============================================================ //
 
-void bsonToPublicKey(UBJ::Value publicKeyObj, struct rsa_public_key& publicKey)
+void ubjToPublicKey(UBJ::Value publicKeyObj, struct rsa_public_key& publicKey)
 {
     mpzFromHexStr(publicKeyObj["e"].toString(), &publicKey.e);
 
@@ -122,7 +120,7 @@ void bsonToPublicKey(UBJ::Value publicKeyObj, struct rsa_public_key& publicKey)
 
 // ============================================================ //
 
-void bsonToPrivateKey(UBJ::Value privateKeyObj, struct rsa_private_key& privateKey)
+void ubjToPrivateKey(UBJ::Value privateKeyObj, struct rsa_private_key& privateKey)
 {
     mpzFromHexStr(privateKeyObj["a"].toString(), &privateKey.a);
 
@@ -199,7 +197,7 @@ BUFFER RSA::encrypt(
 {
     struct rsa_public_key publicKey;
 
-    bsonToPublicKey(publicKeyObj, publicKey);
+    ubjToPublicKey(publicKeyObj, publicKey);
 
     mpz_t z;
 
@@ -249,7 +247,7 @@ BUFFER RSA::decrypt(UBJ::Value &privateKeyObj, BUFFER buf)
 {
     struct rsa_private_key privateKey;
 
-    bsonToPrivateKey(privateKeyObj, privateKey);
+    ubjToPrivateKey(privateKeyObj, privateKey);
 
     mpz_t z;
 
@@ -290,9 +288,9 @@ BUFFER RSA::sign(UBJ::Value &privateKeyObj, BUFFER buf)
 {
     struct rsa_private_key privateKey;
 
-    bsonToPrivateKey(privateKeyObj, privateKey);
+    ubjToPrivateKey(privateKeyObj, privateKey);
 
-    BUFFER digest = Digest::digest(buf->data(), buf->size(), Digest::DIGEST_SHA256);
+    BUFFER digest = Digest::digest(buf, Digest::DIGEST_SHA256);
 
     mpz_t z;
 
@@ -338,9 +336,9 @@ bool RSA::verify(
 {
     struct rsa_public_key publicKey;
 
-    bsonToPublicKey(publicKeyObj, publicKey);
+    ubjToPublicKey(publicKeyObj, publicKey);
 
-    BUFFER digest = Digest::digest(buf->data(), buf->size(), Digest::DIGEST_SHA256);
+    BUFFER digest = Digest::digest(buf, Digest::DIGEST_SHA256);
 
     mpz_t z;
 

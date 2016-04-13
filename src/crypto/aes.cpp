@@ -31,9 +31,7 @@
 #include <nettle/aes.h>
 #include <nettle/ctr.h>
 
-namespace Zway {
-
-namespace Crypto {
+namespace Zway { namespace Crypto {
 
 // ============================================================ //
 // AES

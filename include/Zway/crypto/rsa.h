@@ -29,9 +29,7 @@
 
 #include "Zway/ubj/value.h"
 
-namespace Zway {
-
-namespace Crypto {
+namespace Zway { namespace Crypto {
 
 // ============================================================ //
 

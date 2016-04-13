@@ -29,9 +29,7 @@
 #include <nettle/yarrow.h>
 #include <stdio.h>
 
-namespace Zway {
-
-namespace Crypto {
+namespace Zway { namespace Crypto {
 
 struct yarrow256_ctx yarrow;
 

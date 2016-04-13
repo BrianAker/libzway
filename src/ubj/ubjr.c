@@ -297,7 +297,7 @@ ubjr_dynamic_t ubjr_object_lookup(ubjr_object_t* obj, const char* key)
         // we need a key object as first argument to bsearch instead of key string,
         // otherwise _obj_key_cmp crashes
         priv_ubjr_sorted_key_t k;
-        k.key = key;
+        k.key = (ubjr_string_t)key;
         void* result=bsearch(&k, obj->metatable,obj->size, sizeof(priv_ubjr_sorted_key_t),_obj_key_cmp);
         //void* result=bsearch(key, obj->metatable,obj->size, sizeof(priv_ubjr_sorted_key_t),_obj_key_cmp);
         if (result == NULL)

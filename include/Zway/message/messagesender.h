@@ -79,10 +79,6 @@ protected:
 
     int32_t m_status;
 
-    float m_sendSpeed;
-
-    uint32_t m_startTime;
-
     uint32_t m_messageSize;
 
     bool m_completed;
