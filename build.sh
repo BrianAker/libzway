@@ -373,7 +373,7 @@ build_gnutls()
 
     elif [ $BUILD_TYPE == "osx" ]; then
 
-        ../configure --prefix=$INSTALL_DIR --disable-shared --disable-cxx --disable-heartbeat-support --disable-openssl-compatibility --with-pic --disable-doc --disable-tests > build_gnutls.log 2>&1
+        ../configure --prefix=$INSTALL_DIR --disable-shared --disable-cxx --disable-heartbeat-support --disable-openssl-compatibility --with-pic --with-included-libtasn1 --without-p11-kit --without-idn --disable-doc --disable-tests > build_gnutls.log 2>&1
 
     elif [ $BUILD_TYPE == "ios_i386" ]; then
 
@@ -590,6 +590,20 @@ build_libzway()
         fi
 
         cd ..
+
+    elif [ $BUILD_TYPE == "osx" ]; then
+
+        mkdir osx &> /dev/null
+        cd osx
+
+        cmake ../../..
+
+        if [ $? == 0 ]; then
+           make && make install
+        fi
+
+        cd ..
+
     fi
 
     cd ..
@@ -611,15 +625,15 @@ build()
 
     cd deps
 
-    build_gmp
+    #build_gmp
 
-    build_nettle
+    #build_nettle
 
-    build_gnutls
+    #build_gnutls
 
-    build_sqlite
+    #build_sqlite
 
-    build_libexif
+    #build_libexif
 
     cd ..
 

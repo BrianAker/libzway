@@ -38,7 +38,13 @@ set(INSTALL_TARGET android_arm7)
 
 message(STATUS "Building for Android arm-v7a")
 
-else()
+elseif(CMAKE_HOST_APPLE)
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+
+set(INSTALL_TARGET osx)
+
+elseif(CMAKE_HOST_UNIX)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
