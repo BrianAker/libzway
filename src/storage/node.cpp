@@ -63,7 +63,7 @@ Storage::NODE Storage::Node::copy()
 
 uint32_t Storage::Node::id() const
 {
-	return m_id;
+    return m_id;
 }
 
 uint32_t Storage::Node::time() const
@@ -73,12 +73,12 @@ uint32_t Storage::Node::time() const
 
 uint32_t Storage::Node::type() const
 {
-	return m_type;
+    return m_type;
 }
 
 uint32_t Storage::Node::parent() const
 {
-	return m_parent;
+    return m_parent;
 }
 
 std::string Storage::Node::name() const
@@ -108,12 +108,12 @@ std::string Storage::Node::user4() const
 
 BUFFER Storage::Node::head()
 {
-	return m_head;
+    return m_head;
 }
 
 BUFFER Storage::Node::body()
 {
-	return m_body;
+    return m_body;
 }
 
 bool Storage::Node::headUbj(UBJ::Value &head, bool /*secure*/)
@@ -123,7 +123,7 @@ bool Storage::Node::headUbj(UBJ::Value &head, bool /*secure*/)
         UBJ::Value::Reader::read(head, m_head);
 
         return true;
-	}
+    }
 
     return false;
 }
@@ -135,7 +135,7 @@ bool Storage::Node::bodyUbj(UBJ::Value &body, bool /*secure*/)
         UBJ::Value::Reader::read(body, m_body);
 
         return true;
-	}
+    }
 
     return false;
 }
@@ -163,7 +163,7 @@ void Storage::Node::setParent(uint32_t parent)
 
 void Storage::Node::setName(const std::string& name)
 {
-	m_name = name;
+    m_name = name;
 }
 
 
@@ -224,7 +224,7 @@ bool Storage::Node::setHeadUbj(const UBJ::Value &obj)
         setHead(buf);
     }
 
-	return true;
+    return true;
 }
 
 bool Storage::Node::setBodyUbj(const UBJ::Value &obj)

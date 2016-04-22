@@ -78,7 +78,7 @@ Storage::Storage()
 
 Storage::~Storage()
 {
-	close();
+    close();
 }
 
 // ============================================================ //
@@ -104,12 +104,12 @@ bool Storage::_init(const std::string &filename, const std::string &password, UB
         return false;
     }
 
-	std::string sql;
+    std::string sql;
     char* errmsg;
 
-	// create table "nodes"
+    // create table "nodes"
 
-	sql = "CREATE TABLE nodes ("\
+    sql = "CREATE TABLE nodes ("\
           "id     INTEGER,"\
           "time   INTEGER,"\
           "type   INTEGER,"\
@@ -125,14 +125,14 @@ bool Storage::_init(const std::string &filename, const std::string &password, UB
 
     sqlite3_exec((sqlite3*)m_db, sql.c_str(), nullptr, nullptr, &errmsg);
 
-	if (errmsg) {
+    if (errmsg) {
 
-	    sqlite3_free(errmsg);
+        sqlite3_free(errmsg);
 
         close();
 
-	    return false;
-	}
+        return false;
+    }
 
     // create random storage key
 
@@ -185,7 +185,7 @@ bool Storage::_init(const std::string &filename, const std::string &password, UB
 
     head["pwd"] = pwd;
 
-	// set head
+    // set head
 
     if (!root->setHeadUbj(head)) {
 
@@ -227,7 +227,7 @@ bool Storage::_init(const std::string &filename, const std::string &password, UB
 
     createDefaultNodes();
 
-	return true;
+    return true;
 }
 
 // ============================================================ //
@@ -248,9 +248,9 @@ bool Storage::_open(const std::string &filename, const std::string &password)
 
     if (!root) {
 
-    	close();
+        close();
 
-    	return false;
+        return false;
     }
 
     UBJ::Object head;
@@ -293,19 +293,19 @@ bool Storage::_open(const std::string &filename, const std::string &password)
 
     BUFFER pwd = Buffer::create(head["pwd"].buffer());
 
-	aes.setCtr(ctr);
+    aes.setCtr(ctr);
     aes.decrypt(pwd, pwd, 32);
 
-	// verify password
+    // verify password
 
     if (memcmp(pwd->data(), digest->data(), 32)) {
 
-		// password mismatch
+        // password mismatch
 
-		close();
+        close();
 
-		return false;
-	}
+        return false;
+    }
 
     // assign decrypted key
 
@@ -612,16 +612,15 @@ bool Storage::updateNode(
     else {
 
         update = UBJ_OBJ(
-            "id"     << node->id() <<
-            "time"   << node->time() <<
-            "type"   << node->type() <<
-            "parent" << node->parent() <<
-            "name"   << node->name() <<
-            "user1"  << node->user1() <<
-            "user2"  << node->user2() <<
-            "user3"  << node->user3() <<
-            "user4"  << node->user4()
-        );
+                "id"     << node->id() <<
+                "time"   << node->time() <<
+                "type"   << node->type() <<
+                "parent" << node->parent() <<
+                "name"   << node->name() <<
+                "user1"  << node->user1() <<
+                "user2"  << node->user2() <<
+                "user3"  << node->user3() <<
+                "user4"  << node->user4());
     }
 
     if (updateHead) {
@@ -683,9 +682,9 @@ bool Storage::deleteNode(const UBJ::Object &query, bool deleteChildren, bool enc
     }
 
     if (node->id() == RootNodeId ||
-        node->id() == DataNodeId ||
-        node->id() == VfsNodeId ||
-        node->id() == ConfigNodeId) {
+            node->id() == DataNodeId ||
+            node->id() == VfsNodeId ||
+            node->id() == ConfigNodeId) {
 
         return false;
     }
@@ -693,12 +692,12 @@ bool Storage::deleteNode(const UBJ::Object &query, bool deleteChildren, bool enc
     if (deleteChildren) {
 
         NODE_LIST childNodes = getNodes(
-                    UBJ_OBJ("parent" << node->id()),
-                    UBJ::Object(),
-                    UBJ_ARR("id"),
-                    0,
-                    0,
-                    encryptQuery);
+                UBJ_OBJ("parent" << node->id()),
+                UBJ::Object(),
+                UBJ_ARR("id"),
+                0,
+                0,
+                encryptQuery);
 
         for (auto &childNode : childNodes) {
 
@@ -785,13 +784,13 @@ bool Storage::openBodyBlob(uint32_t id, bool encryptQuery)
     }
 
     Action action = prepareSelect(
-                "nodes",
-                UBJ_OBJ("id" << id),
-                UBJ::Object(),
-                UBJ_ARR("rowid"),
-                0,
-                0,
-                encryptQuery);
+            "nodes",
+            UBJ_OBJ("id" << id),
+            UBJ::Object(),
+            UBJ_ARR("rowid"),
+            0,
+            0,
+            encryptQuery);
 
     sqlite3_stmt* stmt = (sqlite3_stmt*)action.stmt();
 
@@ -1285,7 +1284,7 @@ bool Storage::updateMessage(MESSAGE msg)
 
     head["userData"] = msg->value("userData");
 
-    node->setHeadUbj(head);    
+    node->setHeadUbj(head);
 
     UBJ::Object body;
 
@@ -1608,10 +1607,9 @@ bool Storage::setConfig(const UBJ::Object &config)
     node->bodyUbj(conf);
 
     std::list<std::string> settings = {
-        "findByLabel",
-        "findByPhone",
-        "notifyStatus"
-    };
+            "findByLabel",
+            "findByPhone",
+            "notifyStatus"};
 
     for (auto &s : settings) {
 
@@ -1635,10 +1633,11 @@ bool Storage::setConfig(const UBJ::Object &config)
 
 void Storage::cleanup()
 {
-    deleteNodes(UBJ_OBJ("type" << UBJ_ARR(
-            Node::HistoryType <<
-            Node::MessageType <<
-            Node::ResourceType)));
+    deleteNodes(
+            UBJ_OBJ("type" << UBJ_ARR(
+                Node::HistoryType <<
+                Node::MessageType <<
+                Node::ResourceType)));
 }
 
 // ============================================================ //

@@ -89,7 +89,6 @@ bool Client::cleanup() {
 
         if (!m_instance->close()) {
 
-
         }
 
         delete m_instance;
@@ -186,9 +185,9 @@ bool Client::start(const std::string& host, uint32_t port)
         return false;
     }
 
-	m_host = host;
+    m_host = host;
 
-	m_port = port;
+    m_port = port;
 
     // run event dispatcher
 
@@ -196,7 +195,7 @@ bool Client::start(const std::string& host, uint32_t port)
 
         //postEvent(MAKE_ERROR(0, "Failed to start event dispatcher"));
 
-    	return false;
+        return false;
     }
 
     // run client thread
@@ -352,7 +351,7 @@ bool Client::createAccount(
         CREATE_ACCOUNT_CALLBACK callback)
 {
     if (!m_storage &&
-        status() >= Secure) {
+            status() >= Secure) {
 
         return postRequest(CreateAccountRequest::create(account, storagePassword, callback));
     }
@@ -374,8 +373,8 @@ bool Client::login(
         LOGIN_CALLBACK callback)
 {
     if (storage &&
-        status() >= Secure &&
-        status() != LoggedIn) {
+            status() >= Secure &&
+            status() != LoggedIn) {
 
         return postRequest(LoginRequest::create(storage, callback));
     }
@@ -413,16 +412,16 @@ bool Client::setConfig(const UBJ::Value &config, EVENT_CALLBACK callback)
             return postRequest(Zway::ConfigRequest::create(conf, callback));
         }
         else
-        if (callback) {
+            if (callback) {
 
-            callback(DUMMY_EVENT(0));
-        }
+                callback(DUMMY_EVENT(0));
+            }
     }
     else
-    if (callback) {
+        if (callback) {
 
-        callback(ERROR_EVENT(0, "Failed to set config"));
-    }
+            callback(ERROR_EVENT(0, "Failed to set config"));
+        }
 
     return false;
 }
@@ -520,8 +519,8 @@ bool Client::cancelRequest(uint32_t requestId, EVENT_CALLBACK callback)
     }
 
     postRequest(Zway::DispatchRequest::create(
-            UBJ_OBJ("requestDispatchId" << requestId << "action" << "cancel"),
-            callback));
+                    UBJ_OBJ("requestDispatchId" << requestId << "action" << "cancel"),
+                    callback));
 
     return true;
 }
@@ -600,9 +599,9 @@ uint32_t Client::getContactStatus(uint32_t id)
     if (m_contactStatus->find(id) != m_contactStatus->end()) {
 
         return (*m_contactStatus)[id];
-	}
+    }
 
-	return 0;
+    return 0;
 }
 
 // ============================================================ //
@@ -622,7 +621,7 @@ void Client::onRun()
 
     if (!connect(m_host, m_port)) {
 
-    	reconnect();
+        reconnect();
 
         //onThreadFinish();
 
@@ -697,24 +696,24 @@ void Client::onRun()
 
                 // process current packet
 
-				switch (pkt->getId()) {
+                switch (pkt->getId()) {
 
-                    case Packet::Heartbeat:
+                case Packet::Heartbeat:
 
-                        break;
+                    break;
 
-                    case Packet::Request:
+                case Packet::Request:
 
-                        processRequestPkt(pkt);
+                    processRequestPkt(pkt);
 
-                        break;
+                    break;
 
-                    case Packet::Message:
+                case Packet::Message:
 
-                        processMessagePkt(pkt);
+                    processMessagePkt(pkt);
 
-                        break;
-				}
+                    break;
+                }
             }
         }
 
@@ -774,14 +773,14 @@ bool Client::connect(const std::string& host, uint32_t port)
 
     u_long on = 1;
 
-	{
-		int32_t ret = ioctlsocket(s, FIONBIO, &on);
+    {
+        int32_t ret = ioctlsocket(s, FIONBIO, &on);
 
-		if (ret != NO_ERROR) {
+        if (ret != NO_ERROR) {
 
-			// ...
-		}
-	}
+            // ...
+        }
+    }
 
 #else
 
@@ -813,54 +812,54 @@ bool Client::connect(const std::string& host, uint32_t port)
 
 #if defined _WIN32
 
-	if (WSAGetLastError() == WSAEWOULDBLOCK) {
-	
+    if (WSAGetLastError() == WSAEWOULDBLOCK) {
+
 #else
 
     if (errno == EINPROGRESS) {
 
 #endif
-		// wait for socket to be connected
+        // wait for socket to be connected
 
-		uint32_t timeout = 10000;
-		uint32_t ms = 0;
+        uint32_t timeout = 10000;
+        uint32_t ms = 0;
 
-		while (ms < timeout) {
+        while (ms < timeout) {
 
-			if (testCancel()) {
+            if (testCancel()) {
 
-				return false;
-			}
+                return false;
+            }
 
-			struct timeval tv;
-			tv.tv_sec = 0;
-			tv.tv_usec = 200000;
+            struct timeval tv;
+            tv.tv_sec = 0;
+            tv.tv_usec = 200000;
 
-			fd_set ws;
-			FD_ZERO(&ws);
-			FD_SET(s, &ws);
+            fd_set ws;
+            FD_ZERO(&ws);
+            FD_SET(s, &ws);
 
             if (select(s + 1, nullptr, &ws, nullptr, &tv) > 0) {
 
-				res = -1;
+                res = -1;
 
 #if defined _WIN32
 
-				uint32_t len = sizeof(int32_t);
-				
-				getsockopt(s, SOL_SOCKET, SO_ERROR, (char*)&res, (int32_t*)&len);
+                uint32_t len = sizeof(int32_t);
+
+                getsockopt(s, SOL_SOCKET, SO_ERROR, (char*)&res, (int32_t*)&len);
 #else
 
-				socklen_t len = sizeof(int32_t);
+                socklen_t len = sizeof(int32_t);
 
-				getsockopt(s, SOL_SOCKET, SO_ERROR, &res, &len);
+                getsockopt(s, SOL_SOCKET, SO_ERROR, &res, &len);
 #endif
 
-				break;
-			}
+                break;
+            }
 
-			ms += 200;
-		}
+            ms += 200;
+        }
     }
 
     if (res) {
@@ -909,7 +908,7 @@ bool Client::connect(const std::string& host, uint32_t port)
 
         //postEvent(MAKE_ERROR(res, gnutls_strerror(res)));
 
-    	return false;
+        return false;
     }
 
     if ((res = gnutls_credentials_set((gnutls_session_t)m_session, GNUTLS_CRD_CERTIFICATE, m_certCred)) < 0) {
@@ -971,7 +970,7 @@ void Client::reconnect()
 
         while (ms < RECONNECT_INTERVAL) {
 
-        	if (testCancel()) {
+            if (testCancel()) {
 
                 return;
             }
@@ -1309,21 +1308,21 @@ bool Client::processMessagePkt(PACKET pkt)
 
     if (receiver->process(pkt, head)) {
 
-	    // check whether the receiver has completed
+        // check whether the receiver has completed
 
-	    if (receiver->completed()) {
+        if (receiver->completed()) {
 
             m_messageReceivers->erase(messageId);
-	    }
-	}
-	else {
+        }
+    }
+    else {
 
         // TODO: handle situation please
 
         m_messageReceivers->erase(messageId);
 
-	    return false;
-	}
+        return false;
+    }
 
     return true;
 }
@@ -1344,8 +1343,8 @@ void Client::checkRequests(uint32_t *numIdle, uint32_t *numWaiting)
         REQUEST &req = it.second;
 
         if (req->status() == Request::Completed ||
-            req->status() == Request::Timeout ||
-            req->status() == Request::Error) {
+                req->status() == Request::Timeout ||
+                req->status() == Request::Error) {
 
             completed.push_back(req);
         }
@@ -1364,15 +1363,15 @@ void Client::checkRequests(uint32_t *numIdle, uint32_t *numWaiting)
                     }));
         }
         else
-        if (req->status() == Request::Idle) {
+            if (req->status() == Request::Idle) {
 
-            nIdle++;
-        }
-        else
-        if (req->status() == Request::WaitingForResponse) {
+                nIdle++;
+            }
+            else
+                if (req->status() == Request::WaitingForResponse) {
 
-            nWaiting++;
-        }
+                    nWaiting++;
+                }
     }
 
     // remove completed requests
@@ -1564,15 +1563,15 @@ uint32_t Client::send(uint8_t* data, uint32_t size)
 
         if (m_sender.testCancel()) {
 
-    		break;
-    	}
+            break;
+        }
 
-    	if (!writable(200)) {
+        if (!writable(200)) {
 
-    		continue;
-    	}
+            continue;
+        }
 
-    	int32_t ret;
+        int32_t ret;
 
         ret = gnutls_record_send((gnutls_session_t)m_session, &data[s], size - s);
 
@@ -1580,14 +1579,14 @@ uint32_t Client::send(uint8_t* data, uint32_t size)
 
         }
 
-    	if (gnutls_error_is_fatal(ret)) {
+        if (gnutls_error_is_fatal(ret)) {
 
-    		return -1;
-    	}
+            return -1;
+        }
 
         if (ret > 0) {
 
-        	s += ret;
+            s += ret;
         }
     }
 
@@ -1602,28 +1601,28 @@ uint32_t Client::recv(uint8_t* data, uint32_t size)
 
     while (s < size) {
 
-    	if (testCancel()) {
+        if (testCancel()) {
 
-    		break;
-    	}
+            break;
+        }
 
-		if (!readable(200)) {
+        if (!readable(200)) {
 
-			continue;
-		}
+            continue;
+        }
 
-		int32_t ret;
+        int32_t ret;
 
         ret = gnutls_record_recv((gnutls_session_t)m_session, &data[s], size - s);
 
-		if (gnutls_error_is_fatal(ret)) {
+        if (gnutls_error_is_fatal(ret)) {
 
-			return -1;
-		}
+            return -1;
+        }
 
-		if (ret > 0) {
+        if (ret > 0) {
 
-			s += ret;
+            s += ret;
         }
     }
 
@@ -1638,10 +1637,10 @@ bool Client::readable(uint32_t ms)
 
     if (gnutls_record_check_pending((gnutls_session_t)m_session)) {
 
-		return true;
-	}
+        return true;
+    }
 
-	// check for socket read readiness
+    // check for socket read readiness
 
     fd_set fds;
     FD_ZERO(&fds);
@@ -1665,7 +1664,7 @@ bool Client::readable(uint32_t ms)
 
 bool Client::writable(uint32_t ms)
 {
-	// check for socket write readiness
+    // check for socket write readiness
 
     fd_set fds;
     FD_ZERO(&fds);

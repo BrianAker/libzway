@@ -76,7 +76,7 @@ PACKET Packet::create(uint32_t id, BUFFER head, BUFFER body)
 // ============================================================ //
 
 PACKET Packet::createFromUbj(
-		uint32_t id,
+        uint32_t id,
         const UBJ::Value &head,
         const UBJ::Value &body)
 {
@@ -86,12 +86,12 @@ PACKET Packet::createFromUbj(
     if (head.isValid()) {
 
         headBuf = UBJ::Value::Writer::write(head);
-	}
+    }
 
     if (body.isValid()) {
 
         bodyBuf = UBJ::Value::Writer::write(body);
-	}
+    }
 
     return create(id, headBuf, bodyBuf);
 }

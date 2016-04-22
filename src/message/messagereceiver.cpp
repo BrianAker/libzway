@@ -226,8 +226,6 @@ bool MessageReceiver::process(PACKET pkt, const UBJ::Value &head)
 
                     uint32_t incomingDir = m_client->storage()->incomingDir(m_msg->src());
 
-                    // TODO size checks here
-
                     // create storage node
 
                     if (!m_client->storage()->storeResource(res, m_msg, resourceSize, incomingDir)) {
@@ -247,8 +245,6 @@ bool MessageReceiver::process(PACKET pkt, const UBJ::Value &head)
                     }
                 }
                 else {
-
-                    // TODO size checks here
 
                     BUFFER resourceBuffer = Buffer::create(nullptr, resourceSize);
 
@@ -323,6 +319,8 @@ bool MessageReceiver::process(PACKET pkt, const UBJ::Value &head)
 
             if (!head.hasField("signature")) {
 
+                // TODO: delete resource
+
                 m_client->postEvent(ERROR_EVENT(0, "Missing resource signature!"));
 
                 return false;
@@ -330,54 +328,41 @@ bool MessageReceiver::process(PACKET pkt, const UBJ::Value &head)
 
             if (!Crypto::RSA::verify(m_publicKey, digest, head["signature"].buffer())) {
 
+                // TODO: delete resource
+
                 m_client->postEvent(ERROR_EVENT(0, "Failed to verify resource signature!"));
 
                 return false;
             }
 
-            if (res->type() == Resource::TextType) {
-
-                // update message
-
+            {
                 Zway::Message::Lock lock(*m_msg);
 
-                if (m_partsProcessed+1 == m_messageParts) {
+                m_msg->setTime(time(nullptr));
 
-                    m_msg->setTime(time(nullptr));
-
-                    m_msg->setStatus(Message::Recv);
-                }
-
-                m_client->storage()->updateMessage(m_msg);
+                m_msg->setStatus(Message::Recv);
             }
-
-            // raise event
 
             m_client->postEvent(MessageEvent::create(Event::ResourceRecv, m_msg, res));
         }
     }
-    else
-    if (m_partsProcessed+1 == m_messageParts) {
 
-        Zway::Message::Lock lock(*m_msg);
-
-        m_msg->setTime(time(nullptr));
-
-        m_msg->setStatus(Message::Recv);
-
-        m_client->storage()->updateMessage(m_msg);
-    }
-
-	m_partsProcessed++;
+    m_partsProcessed++;
 
     if (m_partsProcessed == m_messageParts) {
 
         m_completed = true;
 
+        {
+            Zway::Message::Lock lock(*m_msg);
+
+            m_client->storage()->updateMessage(m_msg);
+        }
+
         // raise event
 
         m_client->postEvent(MessageEvent::create(Event::MessageRecv, m_msg));
-	}
+    }
 
 	return true;
 }

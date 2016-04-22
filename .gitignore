@@ -2,3 +2,4 @@ build
 deps
 doc
 .DS_Store
+CMakeLists.txt.user
