@@ -63,7 +63,7 @@ public:
 
     typedef std::shared_ptr<Storage> Pointer;
 
-    static Pointer init(const std::string &filename, const std::string &password, UBJ::Value &info);
+    static Pointer init(const std::string &filename, const std::string &password, const UBJ::Value &data);
 
     static Pointer open(const std::string &filename, const std::string &password);
 
@@ -199,7 +199,7 @@ private:
 
 protected:
 
-    bool _init(const std::string &filename, const std::string &password, UBJ::Value &info);
+    bool _init(const std::string &filename, const std::string &password, const UBJ::Value &data);
 
     bool _open(const std::string &filename, const std::string &password);
 
@@ -253,7 +253,7 @@ protected:
 
     void rowToUbj(void* stmt, UBJ::Object &obj, bool decrypt=true);
 
-    NODE makeNode(const UBJ::Object &meta, void* stmt, bool decrypt, bool secure);
+    NODE makeNode(const UBJ::Object &data, void* stmt, bool decrypt, bool secure);
 
 protected:
 

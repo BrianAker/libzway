@@ -39,11 +39,11 @@ const uint32_t STORAGE_VERSION = 1;
 // Storage
 // ============================================================ //
 
-Storage::Pointer Storage::init(const std::string &filename, const std::string &password, UBJ::Value &info)
+Storage::Pointer Storage::init(const std::string &filename, const std::string &password, const UBJ::Value &data)
 {
     STORAGE storage = STORAGE(new Storage());
 
-    if (storage->_init(filename, password, info)) {
+    if (storage->_init(filename, password, data)) {
 
         return storage;
     }
@@ -83,7 +83,7 @@ Storage::~Storage()
 
 // ============================================================ //
 
-bool Storage::_init(const std::string &filename, const std::string &password, UBJ::Value &info)
+bool Storage::_init(const std::string &filename, const std::string &password, const UBJ::Value &data)
 {
     FILE* pf = fopen(filename.c_str(), "r");
     if (pf) {
@@ -107,20 +107,20 @@ bool Storage::_init(const std::string &filename, const std::string &password, UB
     std::string sql;
     char* errmsg;
 
-    // create table "nodes"
+    // create nodes table
 
     sql = "CREATE TABLE nodes ("\
           "id     INTEGER,"\
-          "time   INTEGER,"\
-          "type   INTEGER,"\
           "parent INTEGER,"\
+          "type   INTEGER,"\
           "name   TEXT,"\
+          "head   BLOB,"\
+          "body   BLOB,"\
+          "salt   BLOB,"\
           "user1  INTEGER,"\
           "user2  INTEGER,"\
           "user3  TEXT,"\
-          "user4  TEXT,"\
-          "head   BLOB,"
-          "body   BLOB"
+          "user4  TEXT"\
           ")";
 
     sqlite3_exec((sqlite3*)m_db, sql.c_str(), nullptr, nullptr, &errmsg);
@@ -134,6 +134,16 @@ bool Storage::_init(const std::string &filename, const std::string &password, UB
         return false;
     }
 
+    // use pbkdf2 for key generation from password
+
+    BUFFER salt = Buffer::create(nullptr, 16);
+
+    BUFFER pwd = Buffer::create(nullptr, 32);
+
+    pbkdf2_hmac_sha256 (password.size(), (uint8_t*)&password[0], 10000, salt->size(), salt->data(), pwd->size(), pwd->data());
+
+    memset((void*)&password[0], 0, password.size());
+
     // create random storage key
 
     m_key = Buffer::create(nullptr, 32);
@@ -143,15 +153,7 @@ bool Storage::_init(const std::string &filename, const std::string &password, UB
         return false;
     }
 
-    // create sha2 digest from password
-
-    BUFFER pwd = Crypto::Digest::digest((uint8_t*)password.c_str(), password.length(), Crypto::Digest::DIGEST_SHA256);
-
-    // clear password
-
-    memset((void*)&password[0], 0, password.size());
-
-    // encrypt storage key with the hashed password
+    // encrypt storage key with password key
 
     Crypto::AES aes;
 
@@ -169,63 +171,66 @@ bool Storage::_init(const std::string &filename, const std::string &password, UB
 
     // create root node;
 
-    NODE root = Node::create();
+    NODE rootNode = Node::create();
 
-    root->setId(RootNodeId);
+    rootNode->setId(RootNodeId);
 
-    root->setUser1(STORAGE_VERSION);
+    rootNode->setUser1(STORAGE_VERSION);
 
-    UBJ::Object head;
+    UBJ::Object rootData;
 
     // store encrypted key
 
-    head["key"] = key;
+    rootData["key"] = key;
 
     // store encrypted password
 
-    head["pwd"] = pwd;
+    rootData["pwd"] = pwd;
 
     // set head
 
-    if (!root->setHeadUbj(head)) {
+    if (!rootNode->setBodyUbj(rootData)) {
 
         return false;
     }
 
-    if (!addNode(root, false)) {
+    if (!addNode(rootNode, false)) {
 
         return false;
     }
 
     // create data node
 
-    NODE data = Node::create();
+    NODE dataNode = Node::create();
 
-    data->setId(DataNodeId);
+    dataNode->setId(DataNodeId);
 
-    data->setParent(RootNodeId);
+    dataNode->setParent(RootNodeId);
 
-    if (!data->setBodyUbj(info)) {
-
-        return false;
-    }
-
-    if (!addNode(data)) {
+    if (!dataNode->setBodyUbj(data)) {
 
         return false;
     }
 
-    m_accountId = info["id"].toInt();
+    if (!addNode(dataNode)) {
 
-    m_accountPw = info["pw"].toInt();
+        return false;
+    }
 
-    m_accountLabel = info["label"].toString();
+    if (data.isValid()) {
 
-    m_privateKey = info["k1"];
+        m_accountId = data["id"].toInt();
 
-    m_publicKey = info["k2"];
+        m_accountPw = data["pw"].toInt();
 
-    createDefaultNodes();
+        m_accountLabel = data["label"].toString();
+
+        m_publicKey = data["publicKey"];
+
+        m_privateKey = data["privateKey"];
+
+        createDefaultNodes();
+    }
 
     return true;
 }
@@ -244,37 +249,39 @@ bool Storage::_open(const std::string &filename, const std::string &password)
         return false;
     }
 
-    NODE root = getNode(UBJ_OBJ("id" << RootNodeId), UBJ::Object(), UBJ::Object(), 0, false);
+    NODE rootNode = getNode(UBJ_OBJ("id" << RootNodeId), UBJ::Object(), UBJ::Object(), 0, false);
 
-    if (!root) {
-
-        close();
-
-        return false;
-    }
-
-    UBJ::Object head;
-
-    if (!root->headUbj(head)) {
+    if (!rootNode) {
 
         close();
 
         return false;
     }
 
-    if (!head.hasField("key") || !head["key"].size() ||
-        !head.hasField("pwd") || !head["pwd"].size()) {
+    UBJ::Object rootData;
+
+    if (!rootNode->bodyUbj(rootData)) {
 
         close();
 
         return false;
     }
 
-    // create sha2 digest from password
+    if (!(rootData.hasField("key") && rootData["key"].size()) ||
+        !(rootData.hasField("pwd") && rootData["pwd"].size())) {
 
-    BUFFER digest = Crypto::Digest::digest((uint8_t*)password.c_str(), password.size(), Crypto::Digest::DIGEST_SHA256);
+        close();
 
-    // clear password
+        return false;
+    }
+
+    // use pbkdf2 for key generation from password
+
+    BUFFER salt = Buffer::create(nullptr, 16);
+
+    BUFFER pwd = Buffer::create(nullptr, 32);
+
+    pbkdf2_hmac_sha256 (password.size(), (uint8_t*)&password[0], 10000, salt->size(), salt->data(), pwd->size(), pwd->data());
 
     memset((void*)&password[0], 0, password.size());
 
@@ -282,23 +289,23 @@ bool Storage::_open(const std::string &filename, const std::string &password)
 
     Crypto::AES aes;
 
-    BUFFER key = Buffer::create(head["key"].buffer());
+    BUFFER key = Buffer::create(rootData["key"].buffer());
     BUFFER ctr = Buffer::create(nullptr, 16);
 
-    aes.setKey(digest);
+    aes.setKey(pwd);
     aes.setCtr(ctr);
     aes.decrypt(key, key, 32);
 
     // decrypt storage password
 
-    BUFFER pwd = Buffer::create(head["pwd"].buffer());
+    BUFFER tmp = Buffer::create(rootData["pwd"].buffer());
 
     aes.setCtr(ctr);
-    aes.decrypt(pwd, pwd, 32);
+    aes.decrypt(tmp, tmp, 32);
 
     // verify password
 
-    if (memcmp(pwd->data(), digest->data(), 32)) {
+    if (!tmp->equals(pwd)) {
 
         // password mismatch
 
@@ -313,33 +320,33 @@ bool Storage::_open(const std::string &filename, const std::string &password)
 
     // load data
 
-    NODE data = getNode(UBJ_OBJ("id" << DataNodeId), UBJ::Object(), UBJ::Object(), 0, true, true);
+    NODE dataNode = getNode(UBJ_OBJ("id" << DataNodeId), UBJ::Object(), UBJ::Object(), 0, true, true);
 
-    UBJ::Object body;
-
-    if (!data) {
+    if (!dataNode) {
 
         close();
 
         return false;
     }
 
-    if (!data->bodyUbj(body, true)) {
+    UBJ::Object data;
+
+    if (!dataNode->bodyUbj(data, true)) {
 
         close();
 
         return false;
     }
 
-    m_accountId = body["id"].toInt();
+    m_accountId = data["id"].toInt();
 
-    m_accountPw = body["pw"].toInt();
+    m_accountPw = data["pw"].toInt();
 
-    m_accountLabel = body["label"].toString();
+    m_accountLabel = data["label"].toString();
 
-    m_privateKey = body["k1"];
+    m_publicKey = data["publicKey"];
 
-    m_publicKey = body["k2"];
+    m_privateKey = data["privateKey"];
 
     createDefaultNodes();
 
@@ -459,7 +466,6 @@ bool Storage::addNode(std::shared_ptr<Node> node, bool encrypt)
 
     UBJ::Object insert;
     insert["id"]     = node->id();
-    insert["time"]   = node->time();
     insert["type"]   = node->type();
     insert["parent"] = node->parent();
     insert["name"]   = node->name();
@@ -543,11 +549,11 @@ Storage::NODE_LIST Storage::getNodes(
 
     while (sqlite3_step(stmt) == SQLITE_ROW) {
 
-        UBJ::Object meta;
+        UBJ::Object data;
 
-        rowToUbj(stmt, meta, decrypt);
+        rowToUbj(stmt, data, decrypt);
 
-        NODE node = makeNode(meta, stmt, decrypt, secure);
+        NODE node = makeNode(data, stmt, decrypt, secure);
 
         res.push_back(node);
     }
@@ -613,9 +619,8 @@ bool Storage::updateNode(
 
         update = UBJ_OBJ(
                 "id"     << node->id() <<
-                "time"   << node->time() <<
-                "type"   << node->type() <<
                 "parent" << node->parent() <<
+                "type"   << node->type() <<
                 "name"   << node->name() <<
                 "user1"  << node->user1() <<
                 "user2"  << node->user2() <<
@@ -1197,8 +1202,6 @@ uint32_t Storage::createHistory(uint32_t contactId)
 {
     NODE node = Node::create(Node::HistoryType);
 
-    node->setTime(time(nullptr));
-
     node->setUser1(contactId);
 
     addNode(node);
@@ -1233,8 +1236,6 @@ Storage::NODE Storage::storeMessage(MESSAGE msg)
     NODE node = Node::create(Node::MessageType);
 
     node->setId(msg->id());
-
-    node->setTime(msg->time());
 
     node->setParent(msg->history());
 
@@ -1274,11 +1275,11 @@ bool Storage::updateMessage(MESSAGE msg)
 
     UBJ::Object update;
 
-    update["time"] = msg->time();
-
     UBJ::Object head;
 
     node->headUbj(head);
+
+    head["time"] = msg->time();
 
     head["status"] = msg->status();
 
@@ -1316,8 +1317,6 @@ MESSAGE_LIST Storage::getMessages(uint32_t historyId)
 
         message->setId(node->id());
 
-        message->setTime(node->time());
-
         message->setSrc(node->user1());
 
         message->setDst(node->user2());
@@ -1325,6 +1324,8 @@ MESSAGE_LIST Storage::getMessages(uint32_t historyId)
         UBJ::Object head;
 
         node->headUbj(head);
+
+        message->setTime(head["time"].toInt());
 
         message->setStatus((Message::Status)head["status"].toInt());
 
@@ -1825,13 +1826,9 @@ Storage::Action Storage::prepareSelect(
         sql << " OFFSET " << offset;
     }
 
-    //Client::log("prepareSelect sql: %s", sql.str().c_str());
-
     sqlite3_stmt* stmt;
 
     if (sqlite3_prepare_v2((sqlite3*)m_db, sql.str().c_str(), -1, &stmt, nullptr) != SQLITE_OK) {
-
-        //Client::log("SQL Error: %s", sqlite3_errmsg((sqlite3*)m_db));
 
         return Action(nullptr, UBJ::Object());
     }
@@ -2040,7 +2037,7 @@ int32_t Storage::bindUbjToStmt(
 
 // ============================================================ //
 
-Storage::NODE Storage::makeNode(const UBJ::Object &meta, void *stmt, bool decrypt, bool secure)
+Storage::NODE Storage::makeNode(const UBJ::Object &data, void *stmt, bool decrypt, bool secure)
 {
     Crypto::AES aes;
 
@@ -2050,27 +2047,28 @@ Storage::NODE Storage::makeNode(const UBJ::Object &meta, void *stmt, bool decryp
 
     NODE node = Node::create();
 
-    node->setId(meta["id"].toInt());
+    node->setId(data["id"].toInt());
 
-    node->setTime(meta["time"].toInt());
+    node->setType(data["type"].toInt());
 
-    node->setType(meta["type"].toInt());
+    node->setParent(data["parent"].toInt());
 
-    node->setParent(meta["parent"].toInt());
+    node->setName(data["name"].toString());
 
-    node->setName(meta["name"].toString());
+    node->setUser1(data["user1"].toInt());
 
-    node->setUser1(meta["user1"].toInt());
+    node->setUser2(data["user2"].toInt());
 
-    node->setUser2(meta["user2"].toInt());
+    node->setUser3(data["user3"].toString());
 
-    node->setUser3(meta["user3"].toString());
+    node->setUser4(data["user4"].toString());
 
-    node->setUser4(meta["user4"].toString());
+    int32_t headColumn = 4;
+    int32_t bodyColumn = 5;
 
-    uint32_t headSize = sqlite3_column_bytes((sqlite3_stmt*)stmt, 9);
+    uint32_t headSize = sqlite3_column_bytes((sqlite3_stmt*)stmt, headColumn);
 
-    uint32_t bodySize = sqlite3_column_bytes((sqlite3_stmt*)stmt, 10);
+    uint32_t bodySize = sqlite3_column_bytes((sqlite3_stmt*)stmt, bodyColumn);
 
     if (headSize) {
 
@@ -2078,11 +2076,11 @@ Storage::NODE Storage::makeNode(const UBJ::Object &meta, void *stmt, bool decryp
 
         if (secure) {
 
-            buf = Buffer::create((uint8_t*)sqlite3_column_blob((sqlite3_stmt*)stmt, 9), headSize);
+            buf = Buffer::create((uint8_t*)sqlite3_column_blob((sqlite3_stmt*)stmt, headColumn), headSize);
         }
         else {
 
-            buf = Buffer::create((uint8_t*)sqlite3_column_blob((sqlite3_stmt*)stmt, 9), headSize);
+            buf = Buffer::create((uint8_t*)sqlite3_column_blob((sqlite3_stmt*)stmt, headColumn), headSize);
         }
 
         if (decrypt) {
@@ -2100,11 +2098,11 @@ Storage::NODE Storage::makeNode(const UBJ::Object &meta, void *stmt, bool decryp
 
         if (secure) {
 
-            buf = Buffer::create((uint8_t*)sqlite3_column_blob((sqlite3_stmt*)stmt, 10), bodySize);
+            buf = Buffer::create((uint8_t*)sqlite3_column_blob((sqlite3_stmt*)stmt, bodyColumn), bodySize);
         }
         else {
 
-            buf = Buffer::create((uint8_t*)sqlite3_column_blob((sqlite3_stmt*)stmt, 10), bodySize);
+            buf = Buffer::create((uint8_t*)sqlite3_column_blob((sqlite3_stmt*)stmt, bodyColumn), bodySize);
         }
 
         if (decrypt) {

@@ -182,8 +182,6 @@ bool MessageReceiver::process(PACKET pkt, const UBJ::Value &head)
 
                     if (r->md5()->equals(md5)) {
 
-                        //Client::log("replacing resource %u by %u", resourceId, r->id());
-
                         m_skipResource[resourceId] = true;
 
                         m_msg->addResource(r);
@@ -335,7 +333,8 @@ bool MessageReceiver::process(PACKET pkt, const UBJ::Value &head)
                 return false;
             }
 
-            {
+            if (m_partsProcessed + 1 == m_messageParts) {
+
                 Zway::Message::Lock lock(*m_msg);
 
                 m_msg->setTime(time(nullptr));
@@ -355,6 +354,10 @@ bool MessageReceiver::process(PACKET pkt, const UBJ::Value &head)
 
         {
             Zway::Message::Lock lock(*m_msg);
+
+            m_msg->setTime(time(nullptr));
+
+            m_msg->setStatus(Message::Recv);
 
             m_client->storage()->updateMessage(m_msg);
         }

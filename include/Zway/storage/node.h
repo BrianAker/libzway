@@ -64,8 +64,6 @@ public:
 
     uint32_t id() const;
 
-    uint32_t time() const;
-
     uint32_t type() const;
 
     uint32_t parent() const;
@@ -89,8 +87,6 @@ public:
     bool bodyUbj(UBJ::Value &body, bool secure = false);
 
     void setId(uint32_t id);
-
-    void setTime(uint32_t time);
 
     void setType(uint32_t type);
 
@@ -125,8 +121,6 @@ protected:
 protected:
 
     uint32_t m_id;
-
-    uint32_t m_time;
 
     uint32_t m_type;
 

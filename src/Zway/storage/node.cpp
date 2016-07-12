@@ -41,7 +41,6 @@ Storage::NODE Storage::Node::create(uint32_t type, uint32_t parent, const std::s
 
 Storage::Node::Node(uint32_t type, uint32_t parent, const std::string& name)
     : m_id(Crypto::mkId()),
-      m_time(0),
       m_type(type),
       m_parent(parent),
       m_name(name),
@@ -64,11 +63,6 @@ Storage::NODE Storage::Node::copy()
 uint32_t Storage::Node::id() const
 {
     return m_id;
-}
-
-uint32_t Storage::Node::time() const
-{
-    return m_time;
 }
 
 uint32_t Storage::Node::type() const
@@ -140,15 +134,9 @@ bool Storage::Node::bodyUbj(UBJ::Value &body, bool /*secure*/)
     return false;
 }
 
-
 void Storage::Node::setId(uint32_t id)
 {
     m_id = id;
-}
-
-void Storage::Node::setTime(uint32_t time)
-{
-    m_time = time;
 }
 
 void Storage::Node::setType(uint32_t type)

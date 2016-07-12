@@ -24,62 +24,45 @@
 //
 // ============================================================ //
 
-#include "Zway/request/addcontactrequest.h"
+#include "Zway/request/acceptcontactrequest.h"
 #include "Zway/client.h"
 
 namespace Zway {
 
 // ============================================================ //
 
-ADD_CONTACT_REQUEST AddContactRequest::create(
+ACCEPT_CONTACT_REQUEST AcceptContactRequest::create(
+        uint32_t requestId,
         STORAGE storage,
-        const std::string &addCode,
-        const std::string &label,
-        const std::string &phone,
-        bool createAddCode,
         Callback callback)
 {
-    return ADD_CONTACT_REQUEST(new AddContactRequest(storage, addCode, label, phone, createAddCode, callback));
+    return ACCEPT_CONTACT_REQUEST(new AcceptContactRequest(requestId, storage, callback));
 }
 
 // ============================================================ //
 
-AddContactRequest::AddContactRequest(
+AcceptContactRequest::AcceptContactRequest(
+        uint32_t requestId,
         STORAGE storage,
-        const std::string &addCode,
-        const std::string &label,
-        const std::string &phone,
-        bool createAddCode,
         Callback callback)
-    : Request(createAddCode ? CreateAddCode : AddContact, DEFAULT_TIMEOUT, 0),
-      m_storage(storage),
+    : Request(AcceptContact, DEFAULT_TIMEOUT, 0),
       m_callback(callback)
 {
-    m_head["addCode"] = addCode;
+    m_head["requestOrigId"] = requestId;
 
-    m_head["label"] = label;
+    Storage::NODE dataNode = storage->getNode(UBJ_OBJ("id" << Zway::Storage::DataNodeId));
 
-    m_head["phone"] = phone;
+    UBJ::Object data;
 
-    // our public key
+    if (dataNode->bodyUbj(data)) {
 
-    Storage::NODE data = storage->getNode(UBJ_OBJ("id" << Zway::Storage::DataNodeId));
-
-    UBJ::Object body;
-
-    if (data->bodyUbj(body)) {
-
-        m_head["publicKey"] = body["k2"];
-    }
-    else {
-
-        // ...
+        m_head["publicKey"] = data["publicKey"];
     }
 }
 
 // ============================================================ //
 
-bool AddContactRequest::processRecv(PACKET /*pkt*/, const UBJ::Value &head)
+bool AcceptContactRequest::processRecv(PACKET /*pkt*/, const UBJ::Value &head)
 {
     uint32_t status = head["status"].toInt();
 
@@ -87,18 +70,18 @@ bool AddContactRequest::processRecv(PACKET /*pkt*/, const UBJ::Value &head)
 
         finish();
 
-        if (head.hasField("requestNewId")) {
+        m_client->storage()->deleteRequest(m_head["requestOrigId"].toInt());
 
-            UBJ::Object request = UBJ_OBJ(
-                    "requestId"   << head["requestNewId"] <<
-                    "requestType" << Request::AddContact <<
-                    "src"         << m_client->storage()->accountId() <<
-                    "addCode"     << head["addCode"] <<
-                    "label"       << head["label"] <<
-                    "phone"       << head["phone"]);
+        m_client->storage()->addContact(
+                UBJ_OBJ(
+                    "contactId" << head["contactId"] <<
+                    "label"     << head["label"] <<
+                    "phone"     << head["phone"] <<
+                    "publicKey" << head["publicKey"]));
 
-            m_storage->addRequest(request);
-        }
+        m_client->setContactStatus(head["contactId"].toInt(), head["contactStatus"].toInt());
+
+        m_client->setConfig();
 
         m_client->postEvent(RequestEvent::create(
                 0,
@@ -108,11 +91,13 @@ bool AddContactRequest::processRecv(PACKET /*pkt*/, const UBJ::Value &head)
                 [this] (EVENT event) {
                     invokeCallback(event);
                 }));
-	}
-	else
+    }
+    else
     if (status == 0) {
 
-		finish();
+        finish();
+
+        m_client->storage()->deleteRequest(m_head["requestOrigId"].toInt());
 
         m_client->postEvent(RequestEvent::create(
                 0,
@@ -122,22 +107,23 @@ bool AddContactRequest::processRecv(PACKET /*pkt*/, const UBJ::Value &head)
                 [this] (EVENT event) {
                     invokeCallback(event);
                 }));
-	}
+    }
 
     return true;
 }
 
 // ============================================================ //
 
-void AddContactRequest::invokeCallback(EVENT event)
+void AcceptContactRequest::invokeCallback(EVENT event)
 {
     if (m_callback) {
         m_callback(
             RequestEvent::cast(event),
-            std::dynamic_pointer_cast<AddContactRequest>(shared_from_this()));
+            std::dynamic_pointer_cast<AcceptContactRequest>(shared_from_this()));
     }
 }
 
 // ============================================================ //
 
 }
+

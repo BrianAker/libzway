@@ -32,6 +32,8 @@
 #include "Zway/crypto/aes.h"
 #include "Zway/crypto/rsa.h"
 
+#include "nettle/pbkdf2.h"
+
 #include <string>
 
 namespace Zway { namespace Crypto {

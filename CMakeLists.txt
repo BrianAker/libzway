@@ -62,42 +62,42 @@ link_directories(
 )
 
 set(libzway_SRCS
-    src/ubj/ubjr.c 
-    src/ubj/ubjw.c 
-    src/ubj/value.cpp 
-    src/event/event.cpp 
-    src/event/eventdispatcher.cpp 
-    src/crypto/crypto.cpp 
-    src/crypto/random.cpp 
-    src/crypto/secmem.cpp 
-    src/crypto/digest.cpp 
-    src/crypto/aes.cpp 
-    src/crypto/rsa.cpp 
-    src/message/message.cpp 
-    src/message/resource.cpp 
-    src/message/messageevent.cpp 
-    src/message/messagereceiver.cpp 
-    src/message/messagesender.cpp 
-    src/request/addcontactrequest.cpp 
-    src/request/configrequest.cpp 
-    src/request/acceptcontactrequest.cpp 
-    src/request/contactstatusrequest.cpp 
-    src/request/createaccountrequest.cpp 
-    src/request/dispatchrequest.cpp 
-    src/request/rejectcontactrequest.cpp 
-    src/request/findcontactrequest.cpp 
-    src/request/inboxrequest.cpp 
-    src/request/loginrequest.cpp 
-    src/request/messagerequest.cpp 
-    src/request/request.cpp 
-    src/request/requestevent.cpp 
-    src/storage/node.cpp 
-    src/storage/storage.cpp 
-    src/buffer.cpp 
-    src/client.cpp 
-    src/util/exif.cpp 
-    src/packet.cpp 
-    src/thread.cpp
+    src/Zway/ubj/ubjr.c
+    src/Zway/ubj/ubjw.c
+    src/Zway/ubj/value.cpp
+    src/Zway/event/event.cpp
+    src/Zway/event/eventdispatcher.cpp
+    src/Zway/crypto/crypto.cpp
+    src/Zway/crypto/random.cpp
+    src/Zway/crypto/secmem.cpp
+    src/Zway/crypto/digest.cpp
+    src/Zway/crypto/aes.cpp
+    src/Zway/crypto/rsa.cpp
+    src/Zway/message/message.cpp
+    src/Zway/message/resource.cpp
+    src/Zway/message/messageevent.cpp
+    src/Zway/message/messagereceiver.cpp
+    src/Zway/message/messagesender.cpp
+    src/Zway/request/addcontactrequest.cpp
+    src/Zway/request/configrequest.cpp
+    src/Zway/request/acceptcontactrequest.cpp
+    src/Zway/request/contactstatusrequest.cpp
+    src/Zway/request/createaccountrequest.cpp
+    src/Zway/request/dispatchrequest.cpp
+    src/Zway/request/rejectcontactrequest.cpp
+    src/Zway/request/findcontactrequest.cpp
+    src/Zway/request/inboxrequest.cpp
+    src/Zway/request/loginrequest.cpp
+    src/Zway/request/messagerequest.cpp
+    src/Zway/request/request.cpp
+    src/Zway/request/requestevent.cpp
+    src/Zway/storage/node.cpp
+    src/Zway/storage/storage.cpp
+    src/Zway/buffer.cpp
+    src/Zway/client.cpp
+    src/Zway/util/exif.cpp
+    src/Zway/packet.cpp
+    src/Zway/thread.cpp
 )
 
 if (DEFINED ANDROID_CXX_FLAGS)
@@ -141,10 +141,18 @@ install (TARGETS ZwayCore
          LIBRARY DESTINATION ${PROJECT_SOURCE_DIR}/build/install/${INSTALL_TARGET}/lib
          RUNTIME DESTINATION ${PROJECT_SOURCE_DIR}/build/install/${INSTALL_TARGET}/lib)
 
-#add_executable (clienttest test.cpp)
-
+#add_executable (clienttest src/test.cpp)
+#
 #target_link_libraries(clienttest
-#        zway
+#    ZwayCore
+#    gnutls
+#    hogweed
+#    nettle
+#    gmp
+#    sqlite3
+#    exif
+#    pthread
+#    dl
 #)
 
 #install(TARGETS server

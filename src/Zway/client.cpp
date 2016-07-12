@@ -412,16 +412,16 @@ bool Client::setConfig(const UBJ::Value &config, EVENT_CALLBACK callback)
             return postRequest(Zway::ConfigRequest::create(conf, callback));
         }
         else
-            if (callback) {
-
-                callback(DUMMY_EVENT(0));
-            }
-    }
-    else
         if (callback) {
 
-            callback(ERROR_EVENT(0, "Failed to set config"));
+            callback(DUMMY_EVENT(0));
         }
+    }
+    else
+    if (callback) {
+
+        callback(ERROR_EVENT(0, "Failed to set config"));
+    }
 
     return false;
 }

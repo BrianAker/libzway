@@ -56,8 +56,8 @@ CreateAccountRequest::CreateAccountRequest(
 
     if (Crypto::RSA::createKeyPair(publicKey, privateKey, 2048)) {
 
-        m_keys["k1"] = publicKey;
-        m_keys["k2"] = privateKey;
+        m_keys["publicKey"] = publicKey;
+        m_keys["privateKey"] = privateKey;
     }
     else {
 
@@ -92,9 +92,9 @@ bool CreateAccountRequest::processRecv(PACKET /*pkt*/, const UBJ::Value &head)
 
         account["pw"] = head["accountPw"];
 
-        account["k1"] = m_keys["k1"];
+        account["publicKey"] = m_keys["publicKey"];
 
-        account["k2"] = m_keys["k2"];
+        account["privateKey"] = m_keys["privateKey"];
 
         m_storageFilename = m_client->storageDir() + Crypto::Digest::digestHexStr(account["label"].buffer()) + ".store";
 
