@@ -85,11 +85,6 @@ check_dependencies()
     fi
 }
 
-# Build
-
-BUILD_TYPE=$1
-INSTALL_DIR=`pwd`/build/install/$BUILD_TYPE
-
 # Android
 
 ANDROID_NDK_ROOT=$2
@@ -122,7 +117,7 @@ android_setenv_arm7()
     export STRIP="arm-linux-androideabi-strip"
 }
 
-# Mac and iOS
+# OSX and iOS
 
 XCODE_CONTENTS_DIR=/Applications/Xcode.app/Contents
 
@@ -196,51 +191,57 @@ build_gmp()
 
     cd gmp*
 
-    rm -rf build_$BUILD_TYPE
-    mkdir build_$BUILD_TYPE
+    if [ ! -d build_$BUILD_TYPE ]; then
+
+        mkdir build_$BUILD_TYPE
+        cd build_$BUILD_TYPE
+
+        echo "Configuring gmp $GMP_VER for $BUILD_TYPE"
+
+        if   [ $BUILD_TYPE == "linux_32" ]; then
+
+            ../configure --prefix=$INSTALL_DIR --host=i386-linux-gnu --disable-shared --with-pic > build_gmp.log 2>&1
+
+        elif [ $BUILD_TYPE == "linux_64" ]; then
+
+            ../configure --prefix=$INSTALL_DIR --host=x86_64-linux-gnu --disable-shared --with-pic > build_gmp.log 2>&1
+
+        elif [ $BUILD_TYPE == "android_arm7" ]; then
+
+            android_setenv_arm7
+            ../configure --prefix=$INSTALL_DIR --host=arm-linux-androideabi --disable-shared --with-pic > build_gmp.log 2>&1
+
+        elif [ $BUILD_TYPE == "osx" ]; then
+
+            ../configure --prefix=$INSTALL_DIR --disable-shared --with-pic > build_gmp.log 2>&1
+
+        elif [ $BUILD_TYPE == "ios_i386" ]; then
+
+            ios_setenv_i386
+            ../configure --prefix=$INSTALL_DIR --host=i386-apple-darwin --target=i386-apple-darwin --disable-shared --with-pic --disable-assembly > build_gmp.log 2>&1
+
+        elif [ $BUILD_TYPE == "win_32" ]; then
+
+            ../configure --prefix=$INSTALL_DIR --host=i686-w64-mingw32 --disable-shared --with-pic > build_gmp.log 2>&1
+
+        elif [ $BUILD_TYPE == "win_64" ]; then
+
+            ../configure --prefix=$INSTALL_DIR --host=x86_64-w64-mingw32 --disable-shared --with-pic > build_gmp.log 2>&1
+        fi
+
+        if [ $? != 0 ]; then
+            echo "Failed to configure gmp, see build_gmp.log for details"
+            cd ..
+            exit -1
+        fi
+
+        cd ..
+    fi
+
     cd build_$BUILD_TYPE
 
-    echo "Configuring gmp $GMP_VER for $BUILD_TYPE"
-
-    if   [ $BUILD_TYPE == "linux_32" ]; then
-
-        ../configure --prefix=$INSTALL_DIR --host=i386-linux-gnu --disable-shared --with-pic > build_gmp.log 2>&1
-
-    elif [ $BUILD_TYPE == "linux_64" ]; then
-
-        ../configure --prefix=$INSTALL_DIR --host=x86_64-linux-gnu --disable-shared --with-pic > build_gmp.log 2>&1
-
-    elif [ $BUILD_TYPE == "android_arm7" ]; then
-
-        android_setenv_arm7
-        ../configure --prefix=$INSTALL_DIR --host=arm-linux-androideabi --disable-shared --with-pic > build_gmp.log 2>&1
-
-    elif [ $BUILD_TYPE == "osx" ]; then
-
-        ../configure --prefix=$INSTALL_DIR --disable-shared --with-pic > build_gmp.log 2>&1
-
-    elif [ $BUILD_TYPE == "ios_i386" ]; then
-
-        ios_setenv_i386
-        ../configure --prefix=$INSTALL_DIR --host=i386-apple-darwin --disable-shared --with-pic --disable-assembly > build_gmp.log 2>&1
-
-    elif [ $BUILD_TYPE == "win_32" ]; then
-
-        ../configure --prefix=$INSTALL_DIR --host=i686-w64-mingw32 --disable-shared --with-pic > build_gmp.log 2>&1
-
-    elif [ $BUILD_TYPE == "win_64" ]; then
-
-        ../configure --prefix=$INSTALL_DIR --host=x86_64-w64-mingw32 --disable-shared --with-pic > build_gmp.log 2>&1
-    fi
-
-    if [ $? != 0 ]; then
-        echo "Failed to configure gmp, see build_gmp.log for details"
-        cd ../..
-        exit -1
-    fi
-
     echo "Building gmp"
-    make -j2 >> build_gmp.log 2>&1
+    make -j2 > build_gmp.log 2>&1
 
     if [ $? != 0 ]; then
         echo "Failed to build gmp, see build_gmp.log for details"
@@ -272,55 +273,63 @@ build_nettle()
         #sed -n '/SUBDIRS = tools testsuite examples/!p' Makefile.in > Makefile.in.tmp
         #mv Makefile.in.tmp Makefile.in
     else
+
         cd nettle*
+
     fi
 
-    rm -rf build_$BUILD_TYPE
-    mkdir build_$BUILD_TYPE
+    if [ ! -d build_$BUILD_TYPE ]; then
+
+        mkdir build_$BUILD_TYPE
+        cd build_$BUILD_TYPE
+
+        echo "Configuring nettle $NETTLE_VER for $BUILD_TYPE"
+
+        if   [ $BUILD_TYPE == "linux_32" ]; then
+
+                ../configure --prefix=$INSTALL_DIR --host=i386-linux-gnu --disable-shared --with-include-path=$INSTALL_DIR/include --with-lib-path=$INSTALL_DIR/lib --disable-documentation > build_nettle.log 2>&1
+
+        elif [ $BUILD_TYPE == "linux_64" ]; then
+
+            ../configure --prefix=$INSTALL_DIR --host=x86_64-linux-gnu --disable-shared --with-include-path=$INSTALL_DIR/include --with-lib-path=$INSTALL_DIR/lib --disable-documentation > build_nettle.log 2>&1
+
+        elif [ $BUILD_TYPE == "android_arm7" ]; then
+
+            android_setenv_arm7
+            ../configure --prefix=$INSTALL_DIR --host=arm-linux-androideabi --disable-shared --with-include-path=$INSTALL_DIR/include --with-lib-path=$INSTALL_DIR/lib --disable-documentation > build_nettle.log 2>&1
+
+        elif [ $BUILD_TYPE == "osx" ]; then
+
+            ../configure --prefix=$INSTALL_DIR --disable-shared --with-include-path=$INSTALL_DIR/include --with-lib-path=$INSTALL_DIR/lib --disable-documentation > build_nettle.log 2>&1
+
+        elif [ $BUILD_TYPE == "ios_i386" ]; then
+
+            ios_setenv_i386
+            export CC_FOR_BUILD="gcc $CFLAGS"
+            ../configure --prefix=$INSTALL_DIR --host=i386-apple-darwin --disable-shared --with-include-path=$INSTALL_DIR/include --with-lib-path=$INSTALL_DIR/lib --disable-documentation > build_nettle.log 2>&1
+
+        elif [ $BUILD_TYPE == "win_32" ]; then
+
+            ../configure --prefix=$INSTALL_DIR --host=i686-w64-mingw32 --disable-shared --with-include-path=$INSTALL_DIR/include --with-lib-path=$INSTALL_DIR/lib --disable-documentation > build_nettle.log 2>&1
+
+        elif [ $BUILD_TYPE == "win_64" ]; then
+
+            ../configure --prefix=$INSTALL_DIR --host=x86_64-w64-mingw32 --disable-shared --with-include-path=$INSTALL_DIR/include --with-lib-path=$INSTALL_DIR/lib --disable-documentation > build_nettle.log 2>&1
+        fi
+
+        if [ $? != 0 ]; then
+            echo "Failed to configure nettle, see build_nettle.log for details"
+            cd ..
+            exit -1
+        fi
+
+        cd ..
+    fi
+
     cd build_$BUILD_TYPE
 
-    echo "Configuring nettle $NETTLE_VER for $BUILD_TYPE"
-
-    if   [ $BUILD_TYPE == "linux_32" ]; then
-
-            ../configure --prefix=$INSTALL_DIR --host=i386-linux-gnu --disable-shared --with-include-path=$INSTALL_DIR/include --with-lib-path=$INSTALL_DIR/lib --disable-documentation > build_nettle.log 2>&1
-
-    elif [ $BUILD_TYPE == "linux_64" ]; then
-
-        ../configure --prefix=$INSTALL_DIR --host=x86_64-linux-gnu --disable-shared --with-include-path=$INSTALL_DIR/include --with-lib-path=$INSTALL_DIR/lib --disable-documentation > build_nettle.log 2>&1
-
-    elif [ $BUILD_TYPE == "android_arm7" ]; then
-
-        android_setenv_arm7
-        ../configure --prefix=$INSTALL_DIR --host=arm-linux-androideabi --disable-shared --with-include-path=$INSTALL_DIR/include --with-lib-path=$INSTALL_DIR/lib --disable-documentation > build_nettle.log 2>&1
-
-    elif [ $BUILD_TYPE == "osx" ]; then
-
-        ../configure --prefix=$INSTALL_DIR --disable-shared --with-include-path=$INSTALL_DIR/include --with-lib-path=$INSTALL_DIR/lib --disable-documentation > build_nettle.log 2>&1
-
-    elif [ $BUILD_TYPE == "ios_i386" ]; then
-
-        ios_setenv_i386
-        export CC_FOR_BUILD="gcc $CFLAGS"
-        ../configure --prefix=$INSTALL_DIR --host=i386-apple-darwin --disable-shared --with-include-path=$INSTALL_DIR/include --with-lib-path=$INSTALL_DIR/lib --disable-documentation > build_nettle.log 2>&1
-
-    elif [ $BUILD_TYPE == "win_32" ]; then
-
-        ../configure --prefix=$INSTALL_DIR --host=i686-w64-mingw32 --disable-shared --with-include-path=$INSTALL_DIR/include --with-lib-path=$INSTALL_DIR/lib --disable-documentation > build_nettle.log 2>&1
-
-    elif [ $BUILD_TYPE == "win_64" ]; then
-
-        ../configure --prefix=$INSTALL_DIR --host=x86_64-w64-mingw32 --disable-shared --with-include-path=$INSTALL_DIR/include --with-lib-path=$INSTALL_DIR/lib --disable-documentation > build_nettle.log 2>&1
-    fi
-
-    if [ $? != 0 ]; then
-        echo "Failed to configure nettle, see build_nettle.log for details"
-        cd ../..
-        exit -1
-    fi
-
     echo "Building nettle"
-    make -j2 >> build_nettle.log 2>&1
+    make -j2 > build_nettle.log 2>&1
 
     if [ $? != 0 ]; then
         echo "Failed to build nettle, see build_nettle.log for details"
@@ -345,58 +354,64 @@ build_gnutls()
 
     cd gnutls*
 
-    rm -rf build_$BUILD_TYPE
-    mkdir build_$BUILD_TYPE
+    if [ ! -d build_$BUILD_TYPE ]; then
+
+        mkdir build_$BUILD_TYPE
+        cd build_$BUILD_TYPE
+
+        export GMP_CFLAGS="-I$INSTALL_DIR/include"
+        export GMP_LIBS="-L$INSTALL_DIR/lib -lgmp"
+        export NETTLE_CFLAGS="-I$INSTALL_DIR/include"
+        export NETTLE_LIBS="-L$INSTALL_DIR/lib -lnettle"
+        export HOGWEED_CFLAGS="-I$INSTALL_DIR/include/"
+        export HOGWEED_LIBS="-L$INSTALL_DIR/lib/ -lhogweed"
+
+        echo "Configuring gnutls $GNUTLS_VER for $BUILD_TYPE"
+
+        if   [ $BUILD_TYPE == "linux_32" ]; then
+
+            ../configure --prefix=$INSTALL_DIR --host=i386-linux-gnu --disable-shared --disable-cxx --disable-heartbeat-support --disable-openssl-compatibility --with-pic --with-included-libtasn1 --without-p11-kit --disable-doc --disable-tests > build_gnutls.log 2>&1
+
+        elif [ $BUILD_TYPE == "linux_64" ]; then
+
+            ../configure --prefix=$INSTALL_DIR --host=x86_64-linux-gnu --disable-shared --disable-cxx --disable-heartbeat-support --disable-openssl-compatibility --with-pic --with-included-libtasn1 --without-p11-kit --disable-doc --disable-tests > build_gnutls.log 2>&1
+
+        elif [ $BUILD_TYPE == "android_arm7" ]; then
+
+            android_setenv_arm7
+            ../configure --prefix=$INSTALL_DIR --host=arm-linux-androideabi --disable-shared --disable-cxx --disable-heartbeat-support --disable-openssl-compatibility --with-pic --with-included-libtasn1 --without-p11-kit --disable-doc --disable-tests > build_gnutls.log 2>&1
+
+        elif [ $BUILD_TYPE == "osx" ]; then
+
+            ../configure --prefix=$INSTALL_DIR --disable-shared --disable-cxx --disable-heartbeat-support --disable-openssl-compatibility --with-pic --with-included-libtasn1 --without-p11-kit --without-idn --disable-doc --disable-tests > build_gnutls.log 2>&1
+
+        elif [ $BUILD_TYPE == "ios_i386" ]; then
+
+            ios_setenv_i386
+            ../configure --prefix=/$INSTALL_DIR --host=i386-apple-darwin --disable-shared --disable-cxx --disable-heartbeat-support --disable-openssl-compatibility --with-pic --with-included-libtasn1 --without-p11-kit --without-idn --disable-doc --disable-tests > build_gnutls.log 2>&1
+
+        elif [ $BUILD_TYPE == "win_32" ]; then
+
+            ../configure --prefix=$INSTALL_DIR --host=i686-w64-mingw32 --disable-shared --disable-cxx --disable-heartbeat-support --disable-openssl-compatibility --with-pic --with-included-libtasn1 --without-p11-kit --disable-doc --disable-tests > build_gnutls.log 2>&1
+
+        elif [ $BUILD_TYPE == "win_64" ]; then
+
+            ../configure --prefix=$INSTALL_DIR --host=x86_64-w64-mingw32 --disable-shared --disable-cxx --disable-heartbeat-support --disable-openssl-compatibility --with-pic --with-included-libtasn1 --without-p11-kit --disable-doc --disable-tests > build_gnutls.log 2>&1
+        fi
+
+        if [ $? != 0 ]; then
+            echo "Failed to configure gnutls, see build_gnutls.log for details"
+            cd ..
+            exit -1
+        fi
+
+        cd ..
+    fi
+
     cd build_$BUILD_TYPE
 
-    export GMP_CFLAGS="-I$INSTALL_DIR/include"
-    export GMP_LIBS="-L$INSTALL_DIR/lib -lgmp"
-    export NETTLE_CFLAGS="-I$INSTALL_DIR/include"
-    export NETTLE_LIBS="-L$INSTALL_DIR/lib -lnettle"
-    export HOGWEED_CFLAGS="-I$INSTALL_DIR/include/"
-    export HOGWEED_LIBS="-L$INSTALL_DIR/lib/ -lhogweed"
-
-    echo "Configuring gnutls $GNUTLS_VER for $BUILD_TYPE"
-
-    if   [ $BUILD_TYPE == "linux_32" ]; then
-
-        ../configure --prefix=$INSTALL_DIR --host=i386-linux-gnu --disable-shared --disable-cxx --disable-heartbeat-support --disable-openssl-compatibility --with-pic --with-included-libtasn1 --without-p11-kit --disable-doc --disable-tests > build_gnutls.log 2>&1
-
-    elif [ $BUILD_TYPE == "linux_64" ]; then
-
-        ../configure --prefix=$INSTALL_DIR --host=x86_64-linux-gnu --disable-shared --disable-cxx --disable-heartbeat-support --disable-openssl-compatibility --with-pic --with-included-libtasn1 --without-p11-kit --disable-doc --disable-tests > build_gnutls.log 2>&1
-
-    elif [ $BUILD_TYPE == "android_arm7" ]; then
-
-        android_setenv_arm7
-        ../configure --prefix=$INSTALL_DIR --host=arm-linux-androideabi --disable-shared --disable-cxx --disable-heartbeat-support --disable-openssl-compatibility --with-pic --with-included-libtasn1 --without-p11-kit --disable-doc --disable-tests > build_gnutls.log 2>&1
-
-    elif [ $BUILD_TYPE == "osx" ]; then
-
-        ../configure --prefix=$INSTALL_DIR --disable-shared --disable-cxx --disable-heartbeat-support --disable-openssl-compatibility --with-pic --with-included-libtasn1 --without-p11-kit --without-idn --disable-doc --disable-tests > build_gnutls.log 2>&1
-
-    elif [ $BUILD_TYPE == "ios_i386" ]; then
-
-        ios_setenv_i386
-        ../configure --prefix=/$INSTALL_DIR --host=i386-apple-darwin --disable-shared --disable-cxx --disable-heartbeat-support --disable-openssl-compatibility --with-pic --disable-doc --disable-tests > build_gnutls.log 2>&1
-
-    elif [ $BUILD_TYPE == "win_32" ]; then
-
-        ../configure --prefix=$INSTALL_DIR --host=i686-w64-mingw32 --disable-shared --disable-cxx --disable-heartbeat-support --disable-openssl-compatibility --with-pic --with-included-libtasn1 --without-p11-kit --disable-doc --disable-tests > build_gnutls.log 2>&1
-    
-    elif [ $BUILD_TYPE == "win_64" ]; then
-
-        ../configure --prefix=$INSTALL_DIR --host=x86_64-w64-mingw32 --disable-shared --disable-cxx --disable-heartbeat-support --disable-openssl-compatibility --with-pic --with-included-libtasn1 --without-p11-kit --disable-doc --disable-tests > build_gnutls.log 2>&1
-    fi
-
-    if [ $? != 0 ]; then
-        echo "Failed to configure gnutls, see build_gnutls.log for details"
-        cd ../..
-        exit -1
-    fi
-
     echo "Building gnutls"
-    make -j2 >> build_gnutls.log 2>&1
+    make -j2 > build_gnutls.log 2>&1
 
     if [ $? != 0 ]; then
         echo "Failed to build gnutls, see build_gnutls.log for details"
@@ -421,48 +436,54 @@ build_sqlite()
 
     cd sqlite*
 
-    rm -rf build_$BUILD_TYPE
-    mkdir build_$BUILD_TYPE
+    if [ ! -d build_$BUILD_TYPE ]; then
+
+        mkdir build_$BUILD_TYPE
+        cd build_$BUILD_TYPE
+
+        echo "Configuring sqlite $SQLITE_VER for $BUILD_TYPE"
+
+        if   [ $BUILD_TYPE == "linux_32" ]; then
+
+            ../configure --prefix=$INSTALL_DIR --host=i386-linux-gnu --disable-shared --with-pic > build_sqlite.log 2>&1
+
+        elif [ $BUILD_TYPE == "linux_64" ]; then
+
+            ../configure --prefix=$INSTALL_DIR --host=x86_64-linux-gnu --disable-shared --with-pic > build_sqlite.log 2>&1
+
+        elif [ $BUILD_TYPE == "android_arm7" ]; then
+
+            android_setenv_arm7
+            ../configure --prefix=$INSTALL_DIR --host=arm-linux-androideabi --disable-shared --with-pic > build_sqlite.log 2>&1
+
+        elif [ $BUILD_TYPE == "osx" ]; then
+
+            ../configure --prefix=$INSTALL_DIR --disable-shared --with-pic > build_sqlite.log 2>&1
+
+        elif [ $BUILD_TYPE == "ios_i386" ]; then
+
+            ios_setenv_i386
+            ../configure --prefix=$INSTALL_DIR --host=i386-apple-darwin --disable-shared --with-pic > build_sqlite.log 2>&1
+
+        elif [ $BUILD_TYPE == "win_32" ]; then
+
+            ../configure --prefix=$INSTALL_DIR --host=i686-w64-mingw32 --disable-shared --with-pic > build_sqlite.log 2>&1
+
+        elif [ $BUILD_TYPE == "win_64" ]; then
+
+            ../configure --prefix=$INSTALL_DIR --host=x86_64-w64-mingw32 --disable-shared --with-pic > build_sqlite.log 2>&1
+        fi
+
+        if [ $? != 0 ]; then
+            echo "Failed to configure sqlite, see build_sqlite.log for details"
+            cd ..
+            exit -1
+        fi
+
+        cd ..
+    fi
+
     cd build_$BUILD_TYPE
-
-    echo "Configuring sqlite $SQLITE_VER for $BUILD_TYPE"
-
-    if   [ $BUILD_TYPE == "linux_32" ]; then
-
-        ../configure --prefix=$INSTALL_DIR --host=i386-linux-gnu --disable-shared --with-pic > build_sqlite.log 2>&1
-
-    elif [ $BUILD_TYPE == "linux_64" ]; then
-
-        ../configure --prefix=$INSTALL_DIR --host=x86_64-linux-gnu --disable-shared --with-pic > build_sqlite.log 2>&1
-
-    elif [ $BUILD_TYPE == "android_arm7" ]; then
-
-        android_setenv_arm7
-        ../configure --prefix=$INSTALL_DIR --host=arm-linux-androideabi --disable-shared --with-pic > build_sqlite.log 2>&1
-
-    elif [ $BUILD_TYPE == "osx" ]; then
-
-        ../configure --prefix=$INSTALL_DIR --disable-shared --with-pic > build_sqlite.log 2>&1
-
-    elif [ $BUILD_TYPE == "ios_i386" ]; then
-
-        ios_setenv_i386
-        ../configure --prefix=$INSTALL_DIR --host=i386-apple-darwin --disable-shared --with-pic > build_sqlite.log 2>&1
-
-    elif [ $BUILD_TYPE == "win_32" ]; then
-
-        ../configure --prefix=$INSTALL_DIR --host=i686-w64-mingw32 --disable-shared --with-pic > build_sqlite.log 2>&1
-    
-    elif [ $BUILD_TYPE == "win_64" ]; then
-
-        ../configure --prefix=$INSTALL_DIR --host=x86_64-w64-mingw32 --disable-shared --with-pic > build_sqlite.log 2>&1
-    fi
-
-    if [ $? != 0 ]; then
-        echo "Failed to configure sqlite, see build_sqlite.log for details"
-        cd ../..
-        exit -1
-    fi
 
     echo "Building sqlite"
     make -j2 >> build_sqlite.log 2>&1
@@ -490,51 +511,57 @@ build_libexif()
 
     cd libexif*
 
-    # update some files in order to build for android
-    cp /usr/share/misc/config.{sub,guess} .
+    if [ ! -d build_$BUILD_TYPE ]; then
 
-    rm -rf build_$BUILD_TYPE
-    mkdir build_$BUILD_TYPE
+        # update some files in order to build for android
+        cp /usr/share/misc/config.{sub,guess} .
+
+        mkdir build_$BUILD_TYPE
+        cd build_$BUILD_TYPE
+
+        echo "Configuring libexif $LIBEXIF_VER for $BUILD_TYPE"
+
+        if   [ $BUILD_TYPE == "linux_32" ]; then
+
+            ../configure --prefix=$INSTALL_DIR --host=i386-linux-gnu --disable-shared --disable-nls --with-pic > build_libexif.log 2>&1
+
+        elif [ $BUILD_TYPE == "linux_64" ]; then
+
+            ../configure --prefix=$INSTALL_DIR --host=x86_64-linux-gnu --disable-shared --disable-nls --with-pic > build_libexif.log 2>&1
+
+        elif [ $BUILD_TYPE == "android_arm7" ]; then
+
+            android_setenv_arm7
+            ../configure --prefix=$INSTALL_DIR --host=arm-linux-androideabi --disable-shared --disable-nls --with-pic > build_libexif.log 2>&1
+
+        elif [ $BUILD_TYPE == "osx" ]; then
+
+            ../configure --prefix=$INSTALL_DIR --disable-shared --disable-nls --with-pic > build_libexif.log 2>&1
+
+        elif [ $BUILD_TYPE == "ios_i386" ]; then
+
+            ios_setenv_i386
+            ../configure --prefix=$INSTALL_DIR --host=i386-apple-darwin --disable-shared --disable-nls --with-pic > build_libexif.log 2>&1
+
+        elif [ $BUILD_TYPE == "win_32" ]; then
+
+            ../configure --prefix=$INSTALL_DIR --host=i686-w64-mingw32 --disable-shared --disable-nls --with-pic > build_libexif.log 2>&1
+
+        elif [ $BUILD_TYPE == "win_64" ]; then
+
+            ../configure --prefix=$INSTALL_DIR --host=x86_64-w64-mingw32 --disable-shared --disable-nls --with-pic > build_libexif.log 2>&1
+        fi
+
+        if [ $? != 0 ]; then
+            echo "Failed to configure libexif, see build_libexif.log for details"
+            cd ../..
+            exit -1
+        fi
+
+        cd ..
+    fi
+
     cd build_$BUILD_TYPE
-
-    echo "Configuring libexif $LIBEXIF_VER for $BUILD_TYPE"
-
-    if   [ $BUILD_TYPE == "linux_32" ]; then
-
-        ../configure --prefix=$INSTALL_DIR --host=i386-linux-gnu --disable-shared --disable-nls --with-pic > build_libexif.log 2>&1
-
-    elif [ $BUILD_TYPE == "linux_64" ]; then
-
-        ../configure --prefix=$INSTALL_DIR --host=x86_64-linux-gnu --disable-shared --disable-nls --with-pic > build_libexif.log 2>&1
-
-    elif [ $BUILD_TYPE == "android_arm7" ]; then
-
-        android_setenv_arm7
-        ../configure --prefix=$INSTALL_DIR --host=arm-linux-androideabi --disable-shared --disable-nls --with-pic > build_libexif.log 2>&1
-
-    elif [ $BUILD_TYPE == "osx" ]; then
-
-        ../configure --prefix=$INSTALL_DIR --disable-shared --disable-nls --with-pic > build_libexif.log 2>&1
-
-    elif [ $BUILD_TYPE == "ios_i386" ]; then
-
-        ios_setenv_i386
-        ../configure --prefix=$INSTALL_DIR --host=i386-apple-darwin --disable-shared --disable-nls --with-pic > build_libexif.log 2>&1
-
-    elif [ $BUILD_TYPE == "win_32" ]; then
-
-        ../configure --prefix=$INSTALL_DIR --host=i686-w64-mingw32 --disable-shared --disable-nls --with-pic > build_libexif.log 2>&1
-    
-    elif [ $BUILD_TYPE == "win_64" ]; then
-
-        ../configure --prefix=$INSTALL_DIR --host=x86_64-w64-mingw32 --disable-shared --disable-nls --with-pic > build_libexif.log 2>&1
-    fi
-
-    if [ $? != 0 ]; then
-        echo "Failed to configure libexif, see build_libexif.log for details"
-        cd ../..
-        exit -1
-    fi
 
     echo "Building libexif"
     make -j2 >> build_libexif.log 2>&1
@@ -577,7 +604,7 @@ build_libzway()
         fi
 
         cd ..
-    
+
     elif [ $BUILD_TYPE == "android_arm7" ]; then
 
         mkdir android_arm7 &> /dev/null
@@ -613,27 +640,27 @@ build_libzway()
 
 build()
 {
-    if [ ! -d "build" ]; then
+    if [ ! -d build ]; then
         mkdir build
     fi
 
     cd build
 
-    if [ ! -d "deps" ]; then
+    if [ ! -d deps ]; then
         mkdir deps
     fi
 
     cd deps
 
-    #build_gmp
+    build_gmp
 
-    #build_nettle
+    build_nettle
 
-    #build_gnutls
+    build_gnutls
 
-    #build_sqlite
+    build_sqlite
 
-    #build_libexif
+    build_libexif
 
     cd ..
 
@@ -644,7 +671,35 @@ build()
 
 # Start
 
-if [ $# == 0 ]; then
+BUILD_TYPE=$1
+INSTALL_DIR=`pwd`/build/install/$BUILD_TYPE
+
+platform='unknown'
+unamestr=`uname`
+architecture=`uname -m`
+
+if [ "$unamestr" == "Linux" ]; then
+
+    if [ "$architecture" == "x86_64" ]; then
+        echo "Build system detected: Linux 64bit"
+        BUILD_TYPE="linux_64"
+    fi
+
+elif [ "$unamestr" == "Darwin" ]; then
+    echo "Build system detected: $unamestr"
+    BUILD_TYPE="osx"
+fi
+
+if [ "$1" == "clear-deps" ]; then
+
+    CLEAR_TYPE=$2
+
+    #clear_deps
+
+    exit 0
+fi
+
+if [ $BUILD_TYPE == "" ]; then
     echo "Build type missing, possible values are:"
     echo " - linux_32"
     echo " - linux_64"
@@ -655,6 +710,8 @@ if [ $# == 0 ]; then
     echo " - android_arm7"
     exit -1
 fi
+
+INSTALL_DIR=`pwd`/build/install/$BUILD_TYPE
 
 if ( [ $BUILD_TYPE == "android_arm7" ] && [ $# -lt 2 ] ); then
     echo "NDK root missing"
@@ -676,4 +733,3 @@ fi
 check_dependencies
 
 build
-
