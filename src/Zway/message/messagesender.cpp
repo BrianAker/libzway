@@ -74,6 +74,8 @@ bool MessageSender::init()
         m_msg->setId(Crypto::mkId());
     }
 
+    UBJ::Array resources;
+
     // process resources
 
     for (uint32_t i=0; i<m_msg->numResources(); ++i) {
@@ -111,7 +113,7 @@ bool MessageSender::init()
             }
         }
 
-        int32_t parts = 0;
+        uint32_t parts = 0;
 
         if (res->size() > 0) {
 
@@ -143,6 +145,15 @@ bool MessageSender::init()
             m_resourceParts[res->id()] = parts;
 
             m_messageParts += parts;
+
+            // add resource to meta data index
+
+            resources.push(UBJ_OBJ(
+                    "id"    << res->id() <<
+                    "name"  << res->name() <<
+                    "size"  << res->size() <<
+                    "hash"  << res->md5() <<
+                    "parts" << parts));
         }
     }
 
@@ -159,31 +170,46 @@ bool MessageSender::init()
         return false;
     }
 
-    // create random message key and apply it to the cipher
+    // create and set random message key
 
-    m_messageKeyPlain = Buffer::create(nullptr, 32);
+    m_messageKey = Buffer::create(nullptr, 32);
 
-    if (!m_messageKeyPlain) {
-
-        // TODO error event
-
-        return false;
-    }
-
-    if (!Crypto::Random::random(m_messageKeyPlain->data(), m_messageKeyPlain->size(), Crypto::Random::Strong)) {
+    if (!m_messageKey) {
 
         // TODO error event
 
         return false;
     }
 
-    m_aes.setKey(m_messageKeyPlain);
+    if (!Crypto::Random::random(m_messageKey->data(), m_messageKey->size(), Crypto::Random::Strong)) {
+
+        // TODO error event
+
+        return false;
+    }
+
+    m_aes.setKey(m_messageKey);
+
+    // create salt
+
+    m_origSalt = Buffer::create(nullptr, 16);
+
+    if (!Crypto::Random::random(m_origSalt->data(), m_origSalt->size(), Crypto::Random::Strong)) {
+
+        // TODO error event
+
+        return false;
+    }
+
+    m_salt = m_origSalt->copy();
+
+    //m_aes.setCtr(m_salt);
 
     m_aes.setCtr(Buffer::create(nullptr, 16));
 
-    //
+    // rsa encrypt message key with own public key
 
-    BUFFER key = Crypto::RSA::encrypt(m_client->storage()->publicKey(), m_messageKeyPlain);
+    BUFFER key = Crypto::RSA::encrypt(m_client->storage()->publicKey(), m_messageKey);
 
     if (!key) {
 
@@ -215,7 +241,7 @@ bool MessageSender::init()
 
             // encrypt the key using the contact public key
 
-            BUFFER key = Crypto::RSA::encrypt(contact["publicKey"], m_messageKeyPlain);
+            BUFFER key = Crypto::RSA::encrypt(contact["publicKey"], m_messageKey);
 
             if (!key) {
 
@@ -230,12 +256,11 @@ bool MessageSender::init()
 
     m_msg->setSrc(m_client->storage()->accountId());
 
-
     m_msg->setStatus(Message::Outgoing);
-
 
     m_client->storage()->storeMessage(m_msg);
 
+    m_meta = UBJ_OBJ("resources" << resources);
 
     return true;
 }
@@ -266,6 +291,41 @@ bool MessageSender::process()
     	bodySize = remainingBytes;
     }
 
+    // prepare packet head
+
+    UBJ::Object head;
+
+    // do some special stuff for first message packet
+
+    if (m_messagePart == 0) {
+
+        // encrypt meta data
+
+        BUFFER meta = UBJ::Value::Writer::write(m_meta);
+
+        m_aes.setCtr(m_salt);
+        m_aes.encrypt(meta, meta, meta->size());
+
+        // add original salt
+
+        head["salt"] = m_origSalt;
+
+        // add meta data
+
+        head["meta"] = meta;
+
+        // add message keys
+
+        UBJ::Array keys;
+
+        for (auto &it : m_messageKeysEnc) {
+
+            keys << UBJ_OBJ("dst" << it.first << "key" << it.second);
+        }
+
+        head["keys"] = keys;
+    }
+
     // do some special stuff for first resource packet
 
     if (m_resourcePart == 0) {
@@ -294,28 +354,29 @@ bool MessageSender::process()
             }
         }
 
-        // encrypt resource name
+        // increment salt
 
-        std::string name = m_res->name();
+        incrementSalt();
 
-        m_aes.setCtr(Buffer::create(nullptr, 16));
-        m_aes.encrypt(&name[0], &name[0], name.size());
-
-        m_resourceNameEnc[m_res->id()] = Buffer::create((uint8_t*)&name[0], name.size());
-
-        // encrypt resource md5
-
-        BUFFER md5 = m_res->md5()->copy();
-
-        m_aes.setCtr(Buffer::create(nullptr, 16));
-        m_aes.encrypt(md5, md5, md5->size());
-
-        m_resourceHashEnc[m_res->id()] = md5;
-
-        // reset ctr
-
-        m_aes.setCtr(Buffer::create(nullptr, 16));
+        m_aes.setCtr(m_salt);
     }
+
+    // message info
+
+    head["messageId"]    = m_msg->id();
+    head["messageTime"]  = m_msg->time();
+    head["messageSrc"]   = m_msg->src();
+    head["messageDst"]   = m_msg->dst();
+    head["messagePart"]  = m_messagePart;
+    head["messageParts"] = m_messageParts;
+
+    // resource info
+
+    head["resourceId"]    = m_res->id();
+    head["resourceType"]  = m_res->type();
+    head["resourceSize"]  = m_res->size();
+    head["resourcePart"]  = m_resourcePart;
+    head["resourceParts"] = m_resourceParts[m_res->id()];
 
     // pointer into resource buffer
 
@@ -340,43 +401,6 @@ bool MessageSender::process()
     // update sha2 with encrypted data
 
     m_sha2.update(buf->data(), buf->size());
-
-    // prepare packet head
-
-    UBJ::Object head;
-
-    // add message keys if first part
-
-    if (m_messagePart == 0) {
-
-        UBJ::Array keys;
-
-        for (auto &it : m_messageKeysEnc) {
-
-            keys << UBJ_OBJ("dst" << it.first << "key" << it.second);
-        }
-
-        head["keys"] = keys;
-    }
-
-    // message info
-
-    head["messageId"]    = m_msg->id();
-    head["messageTime"]  = m_msg->time();
-    head["messageSrc"]   = m_msg->src();
-    head["messageDst"]   = m_msg->dst();
-    head["messagePart"]  = m_messagePart;
-    head["messageParts"] = m_messageParts;
-
-    // resource info
-
-    head["resourceId"]    = m_res->id();
-    head["resourceType"]  = m_res->type();
-    head["resourceSize"]  = m_res->size();
-    head["resourceName"]  = m_resourceNameEnc[m_res->id()];
-    head["resourceHash"]  = m_resourceHashEnc[m_res->id()];
-    head["resourcePart"]  = m_resourcePart;
-    head["resourceParts"] = m_resourceParts[m_res->id()];
 
     // sign resource if last part
 
@@ -406,7 +430,7 @@ bool MessageSender::process()
             return false;
         }
 
-        // append signature
+        // add signature
 
         head["signature"] = signature;
     }
@@ -507,6 +531,16 @@ bool MessageSender::completed()
 MESSAGE MessageSender::getMessage()
 {
     return m_msg;
+}
+
+// ============================================================ //
+
+void MessageSender::incrementSalt()
+{
+    if (m_salt) {
+
+        (*((uint32_t*)m_salt->data() + (m_salt->size() - sizeof(uint32_t))))++;
+    }
 }
 
 // ============================================================ //

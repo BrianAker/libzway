@@ -61,21 +61,21 @@ protected:
 
     MessageSender(Client* client, MESSAGE msg);
 
-    UBJ::Object getMessageKeys();
+    void incrementSalt();
 
 protected:
 
     Client* m_client;
 
-    int32_t m_messagePart;
+    uint32_t m_messagePart;
 
-    int32_t m_messageParts;
+    uint32_t m_messageParts;
 
-    int32_t m_resourcePart;
+    uint32_t m_resourcePart;
 
-    int32_t m_resourceIndex;
+    uint32_t m_resourceIndex;
 
-    int32_t m_status;
+    uint32_t m_status;
 
     uint32_t m_messageSize;
 
@@ -87,15 +87,17 @@ protected:
 
     RESOURCE_LIST m_resList;
 
-    std::map<uint32_t, int32_t> m_resourceParts;
+    std::map<uint32_t, uint32_t> m_resourceParts;
 
-    BUFFER m_messageKeyPlain;
+    BUFFER m_messageKey;
+
+    BUFFER m_origSalt;
+
+    BUFFER m_salt;
+
+    UBJ::Object m_meta;
 
     std::map<uint32_t, BUFFER> m_messageKeysEnc;
-
-    std::map<uint32_t, BUFFER> m_resourceNameEnc;
-
-    std::map<uint32_t, BUFFER> m_resourceHashEnc;
 
     std::map<uint32_t, bool> m_noStoreResource;
 

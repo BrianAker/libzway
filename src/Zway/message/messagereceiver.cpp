@@ -72,7 +72,17 @@ bool MessageReceiver::init(UBJ::Value &head)
         return false;
     }
 
-    // decrypt message key via our private key
+    if (!head.hasField("salt")) {
+
+        return false;
+    }
+
+    if (!head.hasField("meta")) {
+
+        return false;
+    }
+
+    // decrypt message key with our private key
 
     m_messageKey = Crypto::RSA::decrypt(m_client->storage()->privateKey(), head["messageKey"].buffer());
 
@@ -82,6 +92,34 @@ bool MessageReceiver::init(UBJ::Value &head)
 
         return false;
     }
+
+    m_aes.setKey(m_messageKey);
+
+    m_salt = head["salt"].buffer();
+
+    BUFFER metaData = head["meta"].buffer();
+
+    m_aes.setCtr(m_salt);
+
+    m_aes.decrypt(metaData, metaData, metaData->size());
+
+    if (!UBJ::Value::Reader::read(m_meta, metaData)) {
+
+        // TODO error event
+
+        return false;
+    }
+
+    // create index over resource meta data
+
+    UBJ::Array arr = m_meta["resources"];
+
+    for (auto it : arr.values()) {
+
+        m_resourceMetaData[it.second["id"].toInt()] = it.second;
+    }
+
+    // create message
 
     m_msg = Message::create();
 
@@ -117,8 +155,6 @@ bool MessageReceiver::process(PACKET pkt, const UBJ::Value &head)
 
     if (m_partsProcessed == 0) {
 
-        m_aes.setKey(m_messageKey);
-
         m_aes.setCtr(Buffer::create(nullptr, 16));
     }
 
@@ -151,15 +187,9 @@ bool MessageReceiver::process(PACKET pkt, const UBJ::Value &head)
 
         if (!res) {
 
-            // decrypt name
+            UBJ::Object resourceMetaData = m_resourceMetaData[resourceId];
 
-            BUFFER name = head["resourceName"].buffer();
-
-            m_aes.setCtr(Buffer::create(nullptr, 16));
-
-            m_aes.decrypt(name, name, name->size());
-
-            resourceName = std::string((char*)name->data(), name->size());
+            resourceName = resourceMetaData["name"].toString();
 
             if (resourceType != Resource::TextType) {
 
@@ -172,13 +202,9 @@ bool MessageReceiver::process(PACKET pkt, const UBJ::Value &head)
 
                 if (r) {
 
-                    // decrypt md5
+                    // check md5
 
-                    BUFFER md5 = head["resourceHash"].buffer();
-
-                    m_aes.setCtr(Buffer::create(nullptr, 16));
-
-                    m_aes.decrypt(md5, md5, md5->size());
+                    BUFFER md5 = resourceMetaData["hash"].buffer();
 
                     if (r->md5()->equals(md5)) {
 
@@ -257,9 +283,11 @@ bool MessageReceiver::process(PACKET pkt, const UBJ::Value &head)
                 }
             }
 
-            // reset counter
+            // increment salt
 
-            m_aes.setCtr(Buffer::create(nullptr, 16));
+            incrementSalt();
+
+            m_aes.setCtr(m_salt);
         }
     }
 
@@ -382,6 +410,16 @@ bool MessageReceiver::completed()
 MESSAGE MessageReceiver::message()
 {
     return m_msg;
+}
+
+// ============================================================ //
+
+void MessageReceiver::incrementSalt()
+{
+    if (m_salt) {
+
+        (*((uint32_t*)m_salt->data() + (m_salt->size() - sizeof(uint32_t))))++;
+    }
 }
 
 // ============================================================ //

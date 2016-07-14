@@ -58,6 +58,8 @@ protected:
 
     bool init(UBJ::Value &head);
 
+    void incrementSalt();
+
 protected:
 
     Client* m_client;
@@ -81,6 +83,12 @@ protected:
     std::map<uint32_t, uint32_t> m_resourceParts;
 
     std::map<uint32_t, bool> m_skipResource;
+
+    BUFFER m_salt;
+
+    UBJ::Object m_meta;
+
+    std::map<uint32_t, UBJ::Object> m_resourceMetaData;
 
     Crypto::AES m_aes;
 
