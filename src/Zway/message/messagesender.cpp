@@ -48,14 +48,14 @@ MESSAGE_SENDER MessageSender::create(Client *client, MESSAGE msg)
 
 // ============================================================ //
 
-MessageSender::MessageSender(Client* client, MESSAGE message)
+MessageSender::MessageSender(Client *client, MESSAGE message)
     : m_client(client),
+      m_messageSize(0),
       m_messagePart(0),
       m_messageParts(0),
       m_resourcePart(0),
       m_resourceIndex(0),
       m_status(0),
-      m_messageSize(0),
       m_completed(false),
       m_msg(message),
       m_sha2(Crypto::Digest::DIGEST_SHA256)
@@ -192,20 +192,21 @@ bool MessageSender::init()
 
     // create salt
 
-    m_origSalt = Buffer::create(nullptr, 16);
+    m_salt = Buffer::create(nullptr, 16);
 
-    if (!Crypto::Random::random(m_origSalt->data(), m_origSalt->size(), Crypto::Random::Strong)) {
+    if (!m_salt) {
 
         // TODO error event
 
         return false;
     }
 
-    m_salt = m_origSalt->copy();
+    if (!Crypto::Random::random(m_salt->data(), m_salt->size(), Crypto::Random::Strong)) {
 
-    //m_aes.setCtr(m_salt);
+        // TODO error event
 
-    m_aes.setCtr(Buffer::create(nullptr, 16));
+        return false;
+    }
 
     // rsa encrypt message key with own public key
 
@@ -274,23 +275,6 @@ bool MessageSender::process()
 		return false;
 	}
 
-    // process message part
-
-    // offset into resource data buffer
-
-    uint32_t bodySize = MAX_PACKET_BODY;
-
-    uint32_t offset = m_resourcePart * MAX_PACKET_BODY;
-
-    // compute remaining number of bytes to send for the current resource
-
-    uint32_t remainingBytes = m_res->size() - offset;
-
-    if (remainingBytes < MAX_PACKET_BODY) {
-
-    	bodySize = remainingBytes;
-    }
-
     // prepare packet head
 
     UBJ::Object head;
@@ -304,11 +288,12 @@ bool MessageSender::process()
         BUFFER meta = UBJ::Value::Writer::write(m_meta);
 
         m_aes.setCtr(m_salt);
+
         m_aes.encrypt(meta, meta, meta->size());
 
-        // add original salt
+        // add initial salt
 
-        head["salt"] = m_origSalt;
+        head["salt"] = m_salt->copy();
 
         // add meta data
 
@@ -377,6 +362,21 @@ bool MessageSender::process()
     head["resourceSize"]  = m_res->size();
     head["resourcePart"]  = m_resourcePart;
     head["resourceParts"] = m_resourceParts[m_res->id()];
+
+    // offset into resource buffer
+
+    uint32_t bodySize = MAX_PACKET_BODY;
+
+    uint32_t offset = m_resourcePart * MAX_PACKET_BODY;
+
+    // compute remaining number of bytes to send for the current resource
+
+    uint32_t remainingBytes = m_res->size() - offset;
+
+    if (remainingBytes < MAX_PACKET_BODY) {
+
+        bodySize = remainingBytes;
+    }
 
     // pointer into resource buffer
 
@@ -501,10 +501,6 @@ bool MessageSender::process()
                 m_res->setId(Crypto::mkId());
             }
         }
-
-        // reset cipher
-
-        m_aes.setCtr(Buffer::create(nullptr, 16));
     }
 
     if (m_messagePart == m_messageParts) {
@@ -528,18 +524,13 @@ bool MessageSender::completed()
 
 // ============================================================ //
 
-MESSAGE MessageSender::getMessage()
-{
-    return m_msg;
-}
-
-// ============================================================ //
-
 void MessageSender::incrementSalt()
 {
     if (m_salt) {
 
-        (*((uint32_t*)m_salt->data() + (m_salt->size() - sizeof(uint32_t))))++;
+        uint32_t *p = (uint32_t*)(m_salt->data() + 12);
+
+        (*p)++;
     }
 }
 

@@ -44,17 +44,15 @@ public:
 
     typedef std::shared_ptr<MessageReceiver> Pointer;
 
-    static Pointer create(Client* client, UBJ::Value &head, UBJ::Value &contactPublicKey);
+    static Pointer create(Client *client, UBJ::Value &head, UBJ::Object &contactPublicKey);
 
     bool process(PACKET pkt, const UBJ::Value &head);
 
     bool completed();
 
-    MESSAGE message();
-
 protected:
 
-    MessageReceiver(Client* client, UBJ::Value &contactPublicKey);
+    MessageReceiver(Client *client, UBJ::Object &contactPublicKey);
 
     bool init(UBJ::Value &head);
 
@@ -63,10 +61,6 @@ protected:
 protected:
 
     Client* m_client;
-
-    BUFFER m_messageKey;
-
-    UBJ::Value m_publicKey;
 
     int32_t m_messagePart;
 
@@ -84,11 +78,15 @@ protected:
 
     std::map<uint32_t, bool> m_skipResource;
 
-    BUFFER m_salt;
+    std::map<uint32_t, UBJ::Object> m_resourceMetaData;
 
     UBJ::Object m_meta;
 
-    std::map<uint32_t, UBJ::Object> m_resourceMetaData;
+    BUFFER m_messageKey;
+
+    UBJ::Object m_publicKey;
+
+    BUFFER m_salt;
 
     Crypto::AES m_aes;
 

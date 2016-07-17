@@ -32,7 +32,7 @@ namespace Zway {
 
 // ============================================================ //
 
-MESSAGE_RECEIVER MessageReceiver::create(Client *client, UBJ::Value &head, UBJ::Value& contactPublicKey)
+MESSAGE_RECEIVER MessageReceiver::create(Client *client, UBJ::Value &head, UBJ::Object &contactPublicKey)
 {
     MESSAGE_RECEIVER res = MESSAGE_RECEIVER(new MessageReceiver(client, contactPublicKey));
 
@@ -46,14 +46,14 @@ MESSAGE_RECEIVER MessageReceiver::create(Client *client, UBJ::Value &head, UBJ::
 
 // ============================================================ //
 
-MessageReceiver::MessageReceiver(Client* client, UBJ::Value &contactPublicKey)
+MessageReceiver::MessageReceiver(Client *client, UBJ::Object &contactPublicKey)
     : m_client(client),
-      m_publicKey(contactPublicKey),
       m_messagePart(0),
       m_messageParts(0),
       m_partsProcessed(0),
       m_status(0),
       m_completed(false),
+      m_publicKey(contactPublicKey),
       m_sha2(Crypto::Digest::DIGEST_SHA256)
 {
 
@@ -63,11 +63,7 @@ MessageReceiver::MessageReceiver(Client* client, UBJ::Value &contactPublicKey)
 
 bool MessageReceiver::init(UBJ::Value &head)
 {
-    m_messageParts = head["messageParts"].toInt();
-
     if (!head.hasField("messageKey")) {
-
-        // TODO error event
 
         return false;
     }
@@ -121,6 +117,8 @@ bool MessageReceiver::init(UBJ::Value &head)
 
     // create message
 
+    m_messageParts = head["messageParts"].toInt();
+
     m_msg = Message::create();
 
     m_msg->setId(head["messageId"].toInt());
@@ -151,11 +149,6 @@ bool MessageReceiver::process(PACKET pkt, const UBJ::Value &head)
     if (!head.hasField("resourceId")) {
 
         return false;
-    }
-
-    if (m_partsProcessed == 0) {
-
-        m_aes.setCtr(Buffer::create(nullptr, 16));
     }
 
     uint32_t resourceId = head["resourceId"].toInt();
@@ -407,18 +400,13 @@ bool MessageReceiver::completed()
 
 // ============================================================ //
 
-MESSAGE MessageReceiver::message()
-{
-    return m_msg;
-}
-
-// ============================================================ //
-
 void MessageReceiver::incrementSalt()
 {
     if (m_salt) {
 
-        (*((uint32_t*)m_salt->data() + (m_salt->size() - sizeof(uint32_t))))++;
+        uint32_t *p = (uint32_t*)(m_salt->data() + 12);
+
+        (*p)++;
     }
 }
 

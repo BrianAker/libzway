@@ -45,27 +45,25 @@ public:
 
     typedef std::shared_ptr<MessageSender> Pointer;
 
-    static Pointer create(Client* client, MESSAGE msg);
+    static Pointer create(Client *client, MESSAGE msg);
 
     bool init();
 
     bool process();
 
-    float getSendSpeed();
-
     bool completed();
-
-    MESSAGE getMessage();
 
 protected:
 
-    MessageSender(Client* client, MESSAGE msg);
+    MessageSender(Client *client, MESSAGE msg);
 
     void incrementSalt();
 
 protected:
 
     Client* m_client;
+
+    uint32_t m_messageSize;
 
     uint32_t m_messagePart;
 
@@ -77,8 +75,6 @@ protected:
 
     uint32_t m_status;
 
-    uint32_t m_messageSize;
-
     bool m_completed;
 
     MESSAGE m_msg;
@@ -89,17 +85,15 @@ protected:
 
     std::map<uint32_t, uint32_t> m_resourceParts;
 
-    BUFFER m_messageKey;
-
-    BUFFER m_origSalt;
-
-    BUFFER m_salt;
+    std::map<uint32_t, bool> m_noStoreResource;
 
     UBJ::Object m_meta;
 
+    BUFFER m_messageKey;
+
     std::map<uint32_t, BUFFER> m_messageKeysEnc;
 
-    std::map<uint32_t, bool> m_noStoreResource;
+    BUFFER m_salt;
 
     Crypto::AES m_aes;
 

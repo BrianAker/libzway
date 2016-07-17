@@ -1260,7 +1260,7 @@ bool Client::processMessagePkt(PACKET pkt)
     uint32_t messageId  = head["messageId"].toInt();
     uint32_t messageSrc = head["messageSrc"].toInt();
 
-    UBJ::Value publicKey;
+    UBJ::Object publicKey;
 
     if (messageSrc != m_storage->accountId()) {
 
